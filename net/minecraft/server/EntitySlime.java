@@ -1,5 +1,7 @@
 package net.minecraft.server;
 
+import org.bukkit.event.entity.SlimeSplitEvent; // CraftBukkit
+
 public class EntitySlime extends EntityLiving implements IMonster {
 
     public float b;
@@ -22,12 +24,19 @@ public class EntitySlime extends EntityLiving implements IMonster {
         this.datawatcher.a(16, new Byte((byte) 1));
     }
 
-    protected void setSize(int i) {
+    // CraftBukkit - protected -> public
+    public void setSize(int i) {
+        boolean updateMaxHealth = this.getMaxHealth() == this.maxHealth; // CraftBukkit
         this.datawatcher.watch(16, new Byte((byte) i));
         this.a(0.6F * (float) i, 0.6F * (float) i);
         this.setPosition(this.locX, this.locY, this.locZ);
-        this.setHealth(this.getMaxHealth());
-        this.bc = i;
+        // CraftBukkit start
+        if (updateMaxHealth) {
+            this.maxHealth = this.getMaxHealth();
+        }
+        this.setHealth(this.maxHealth);
+        // CraftBukkit end
+        this.bd = i;
     }
 
     public int getMaxHealth() {
@@ -100,7 +109,7 @@ public class EntitySlime extends EntityLiving implements IMonster {
 
     protected void bn() {
         this.bk();
-        EntityHuman entityhuman = this.world.findNearbyVulnerablePlayer(this, 16.0D);
+        EntityHuman entityhuman = this.world.findNearbyVulnerablePlayer(this, 16.0D); // CraftBukkit TODO: EntityTargetEvent
 
         if (entityhuman != null) {
             this.a(entityhuman, 10.0F, 20.0F);
@@ -112,17 +121,17 @@ public class EntitySlime extends EntityLiving implements IMonster {
                 this.jumpDelay /= 3;
             }
 
-            this.bE = true;
+            this.bF = true;
             if (this.q()) {
                 this.makeSound(this.n(), this.aX(), ((this.random.nextFloat() - this.random.nextFloat()) * 0.2F + 1.0F) * 0.8F);
             }
 
-            this.bB = 1.0F - this.random.nextFloat() * 2.0F;
-            this.bC = (float) (1 * this.getSize());
+            this.bC = 1.0F - this.random.nextFloat() * 2.0F;
+            this.bD = (float) (1 * this.getSize());
         } else {
-            this.bE = false;
+            this.bF = false;
             if (this.onGround) {
-                this.bB = this.bC = 0.0F;
+                this.bC = this.bD = 0.0F;
             }
         }
     }
@@ -145,6 +154,18 @@ public class EntitySlime extends EntityLiving implements IMonster {
         if (!this.world.isStatic && i > 1 && this.getHealth() <= 0) {
             int j = 2 + this.random.nextInt(3);
 
+            // CraftBukkit start
+            SlimeSplitEvent event = new SlimeSplitEvent((org.bukkit.entity.Slime) this.getBukkitEntity(), j);
+            this.world.getServer().getPluginManager().callEvent(event);
+
+            if (!event.isCancelled() && event.getCount() > 0) {
+                j = event.getCount();
+            } else {
+                super.die();
+                return;
+            }
+            // CraftBukkit end
+
             for (int k = 0; k < j; ++k) {
                 float f = ((float) (k % 2) - 0.5F) * (float) i / 4.0F;
                 float f1 = ((float) (k / 2) - 0.5F) * (float) i / 4.0F;
@@ -152,7 +173,7 @@ public class EntitySlime extends EntityLiving implements IMonster {
 
                 entityslime.setSize(i / 2);
                 entityslime.setPositionRotation(this.locX + (double) f, this.locY + 0.5D, this.locZ + (double) f1, this.random.nextFloat() * 360.0F, 0.0F);
-                this.world.addEntity(entityslime);
+                this.world.addEntity(entityslime, org.bukkit.event.entity.CreatureSpawnEvent.SpawnReason.SLIME_SPLIT); // CraftBukkit - SpawnReason
             }
         }
 

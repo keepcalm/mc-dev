@@ -3,6 +3,11 @@ package net.minecraft.server;
 import java.util.List;
 import java.util.Random;
 
+// CraftBukkit start
+import org.bukkit.event.block.BlockRedstoneEvent;
+import org.bukkit.event.entity.EntityInteractEvent;
+// CraftBukkit end
+
 public class BlockButton extends Block {
 
     private final boolean a;
@@ -139,6 +144,19 @@ public class BlockButton extends Block {
         if (k1 == 0) {
             return true;
         } else {
+            // CraftBukkit start
+            org.bukkit.block.Block block = world.getWorld().getBlockAt(i, j, k);
+            int old = (k1 != 8) ? 1 : 0;
+            int current = (k1 == 8) ? 1 : 0;
+
+            BlockRedstoneEvent eventRedstone = new BlockRedstoneEvent(block, old, current);
+            world.getServer().getPluginManager().callEvent(eventRedstone);
+
+            if ((eventRedstone.getNewCurrent() > 0) != (k1 == 8)) {
+                return true;
+            }
+            // CraftBukkit end
+
             world.setData(i, j, k, j1 + k1);
             world.e(i, j, k, i, j, k);
             world.makeSound((double) i + 0.5D, (double) j + 0.5D, (double) k + 0.5D, "random.click", 0.3F, 0.6F);
@@ -183,6 +201,17 @@ public class BlockButton extends Block {
             int l = world.getData(i, j, k);
 
             if ((l & 8) != 0) {
+                // CraftBukkit start
+                org.bukkit.block.Block block = world.getWorld().getBlockAt(i, j, k);
+
+                BlockRedstoneEvent eventRedstone = new BlockRedstoneEvent(block, 1, 0);
+                world.getServer().getPluginManager().callEvent(eventRedstone);
+
+                if (eventRedstone.getNewCurrent() > 0) {
+                    return;
+                }
+                // CraftBukkit end
+
                 if (this.a) {
                     this.o(world, i, j, k);
                 } else {
@@ -209,6 +238,14 @@ public class BlockButton extends Block {
         if (!world.isStatic) {
             if (this.a) {
                 if ((world.getData(i, j, k) & 8) == 0) {
+                    // CraftBukkit start - Call interaction when entities (currently arrows) hit wooden buttons
+                    EntityInteractEvent event = new EntityInteractEvent(entity.getBukkitEntity(), world.getWorld().getBlockAt(i, j, k));
+                    world.getServer().getPluginManager().callEvent(event);
+
+                    if (event.isCancelled()) {
+                        return;
+                    }
+                    // CraftBukkit end
                     this.o(world, i, j, k);
                 }
             }

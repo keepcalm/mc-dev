@@ -1,10 +1,54 @@
 package net.minecraft.server;
 
+// CraftBukkit start
+import java.util.List;
+
+import org.bukkit.craftbukkit.entity.CraftHumanEntity;
+import org.bukkit.entity.HumanEntity;
+// CraftBukkit end
+
 public class InventoryLargeChest implements IInventory {
 
     private String a;
-    private IInventory left;
-    private IInventory right;
+    public IInventory left; // CraftBukkit - private -> public
+    public IInventory right; // CraftBukkit - private -> public
+
+    // CraftBukkit start
+    public List<HumanEntity> transaction = new java.util.ArrayList<HumanEntity>();
+
+    public ItemStack[] getContents() {
+        ItemStack[] result = new ItemStack[this.getSize()];
+        for (int i = 0; i < result.length; i++) {
+            result[i] = this.getItem(i);
+        }
+        return result;
+    }
+
+    public void onOpen(CraftHumanEntity who) {
+        this.left.onOpen(who);
+        this.right.onOpen(who);
+        transaction.add(who);
+    }
+
+    public void onClose(CraftHumanEntity who) {
+        this.left.onClose(who);
+        this.right.onClose(who);
+        transaction.remove(who);
+    }
+
+    public List<HumanEntity> getViewers() {
+        return transaction;
+    }
+
+    public org.bukkit.inventory.InventoryHolder getOwner() {
+        return null; // This method won't be called since CraftInventoryDoubleChest doesn't defer to here
+    }
+
+    public void setMaxStackSize(int size) {
+        this.left.setMaxStackSize(size);
+        this.right.setMaxStackSize(size);
+    }
+    // CraftBukkit end
 
     public InventoryLargeChest(String s, IInventory iinventory, IInventory iinventory1) {
         this.a = s;
@@ -53,7 +97,7 @@ public class InventoryLargeChest implements IInventory {
     }
 
     public int getMaxStackSize() {
-        return this.left.getMaxStackSize();
+        return Math.min(this.left.getMaxStackSize(), this.right.getMaxStackSize()); // CraftBukkit - check both sides
     }
 
     public void update() {

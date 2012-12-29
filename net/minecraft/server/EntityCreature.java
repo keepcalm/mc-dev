@@ -1,9 +1,14 @@
 package net.minecraft.server;
 
+// CraftBukkit start
+import org.bukkit.craftbukkit.entity.CraftEntity;
+import org.bukkit.event.entity.EntityTargetEvent;
+// CraftBukkit end
+
 public abstract class EntityCreature extends EntityLiving {
 
-    private PathEntity pathEntity;
-    protected Entity target;
+    public PathEntity pathEntity; // CraftBukkit - private -> public
+    public Entity target; // CraftBukkit - protected -> public
     protected boolean b = false;
     protected int c = 0;
 
@@ -25,7 +30,22 @@ public abstract class EntityCreature extends EntityLiving {
         float f = 16.0F;
 
         if (this.target == null) {
-            this.target = this.findTarget();
+            // CraftBukkit start
+            Entity target = this.findTarget();
+            if (target != null) {
+                EntityTargetEvent event = new EntityTargetEvent(this.getBukkitEntity(), target.getBukkitEntity(), EntityTargetEvent.TargetReason.CLOSEST_PLAYER);
+                this.world.getServer().getPluginManager().callEvent(event);
+
+                if (!event.isCancelled()) {
+                    if (event.getTarget() == null) {
+                        this.target = null;
+                    } else {
+                        this.target = ((CraftEntity) event.getTarget()).getHandle();
+                    }
+                }
+            }
+            // CraftBukkit end
+
             if (this.target != null) {
                 this.pathEntity = this.world.findPath(this, this.target, f, true, false, false, true);
             }
@@ -36,13 +56,24 @@ public abstract class EntityCreature extends EntityLiving {
                 this.a(this.target, f1);
             }
         } else {
-            this.target = null;
+            // CraftBukkit start
+            EntityTargetEvent event = new EntityTargetEvent(this.getBukkitEntity(), null, EntityTargetEvent.TargetReason.TARGET_DIED);
+            this.world.getServer().getPluginManager().callEvent(event);
+
+            if (!event.isCancelled()) {
+                if (event.getTarget() == null) {
+                    this.target = null;
+                } else {
+                    this.target = ((CraftEntity) event.getTarget()).getHandle();
+                }
+            }
+            // CraftBukkit end
         }
 
         this.world.methodProfiler.b();
         if (!this.b && this.target != null && (this.pathEntity == null || this.random.nextInt(20) == 0)) {
             this.pathEntity = this.world.findPath(this, this.target, f, true, false, false, true);
-        } else if (!this.b && (this.pathEntity == null && this.random.nextInt(180) == 0 || this.random.nextInt(120) == 0 || this.c > 0) && this.bA < 100) {
+        } else if (!this.b && (this.pathEntity == null && this.random.nextInt(180) == 0 || this.random.nextInt(120) == 0 || this.c > 0) && this.bB < 100) {
             this.i();
         }
 
@@ -66,15 +97,16 @@ public abstract class EntityCreature extends EntityLiving {
                 }
             }
 
-            this.bE = false;
+            this.bF = false;
             if (vec3d != null) {
                 double d1 = vec3d.c - this.locX;
                 double d2 = vec3d.e - this.locZ;
                 double d3 = vec3d.d - (double) i;
-                float f2 = (float) (Math.atan2(d2, d1) * 180.0D / 3.1415927410125732D) - 90.0F;
+                // CraftBukkit - Math -> TrigMath
+                float f2 = (float) (org.bukkit.craftbukkit.TrigMath.atan2(d2, d1) * 180.0D / 3.1415927410125732D) - 90.0F;
                 float f3 = MathHelper.g(f2 - this.yaw);
 
-                this.bC = this.bG;
+                this.bD = this.bH;
                 if (f3 > 30.0F) {
                     f3 = 30.0F;
                 }
@@ -91,12 +123,12 @@ public abstract class EntityCreature extends EntityLiving {
 
                     this.yaw = (float) (Math.atan2(d5, d4) * 180.0D / 3.1415927410125732D) - 90.0F;
                     f3 = (f4 - this.yaw + 90.0F) * 3.1415927F / 180.0F;
-                    this.bB = -MathHelper.sin(f3) * this.bC * 1.0F;
-                    this.bC = MathHelper.cos(f3) * this.bC * 1.0F;
+                    this.bC = -MathHelper.sin(f3) * this.bC * 1.0F;
+                    this.bD = MathHelper.cos(f3) * this.bC * 1.0F;
                 }
 
                 if (d3 > 0.0D) {
-                    this.bE = true;
+                    this.bF = true;
                 }
             }
 
@@ -105,11 +137,11 @@ public abstract class EntityCreature extends EntityLiving {
             }
 
             if (this.positionChanged && !this.k()) {
-                this.bE = true;
+                this.bF = true;
             }
 
             if (this.random.nextFloat() < 0.8F && (flag || flag1)) {
-                this.bE = true;
+                this.bF = true;
             }
 
             this.world.methodProfiler.b();

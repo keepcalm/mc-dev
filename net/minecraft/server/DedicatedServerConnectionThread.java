@@ -22,7 +22,9 @@ public class DedicatedServerConnectionThread extends Thread {
     private final InetAddress g;
     private final int h;
 
-    public DedicatedServerConnectionThread(ServerConnection serverconnection, InetAddress inetaddress, int i) {
+    long connectionThrottle; // CraftBukkit
+
+    public DedicatedServerConnectionThread(ServerConnection serverconnection, InetAddress inetaddress, int i) throws IOException { // CraftBukkit - added throws
         super("Listen thread");
         this.f = serverconnection;
         this.h = i;
@@ -36,20 +38,20 @@ public class DedicatedServerConnectionThread extends Thread {
 
         synchronized (this.b) {
             for (int i = 0; i < this.b.size(); ++i) {
-                NetLoginHandler netloginhandler = (NetLoginHandler) this.b.get(i);
+                PendingConnection pendingconnection = (PendingConnection) this.b.get(i);
 
                 try {
-                    netloginhandler.c();
+                    pendingconnection.c();
                 } catch (Exception exception) {
-                    netloginhandler.disconnect("Internal server error");
-                    a.log(Level.WARNING, "Failed to handle packet for " + netloginhandler.getName() + ": " + exception, exception);
+                    pendingconnection.disconnect("Internal server error");
+                    a.log(Level.WARNING, "Failed to handle packet for " + pendingconnection.getName() + ": " + exception, exception);
                 }
 
-                if (netloginhandler.c) {
+                if (pendingconnection.c) {
                     this.b.remove(i--);
                 }
 
-                netloginhandler.networkManager.a();
+                pendingconnection.networkManager.a();
             }
         }
     }
@@ -62,8 +64,17 @@ public class DedicatedServerConnectionThread extends Thread {
                 long i = System.currentTimeMillis();
                 HashMap hashmap = this.c;
 
+                // CraftBukkit start
+                if (((MinecraftServer) this.f.d()).server == null) {
+                    socket.close();
+                    continue;
+                }
+
+                connectionThrottle = ((MinecraftServer) this.f.d()).server.getConnectionThrottle();
+                // CraftBukkit end
+
                 synchronized (this.c) {
-                    if (this.c.containsKey(inetaddress) && !b(inetaddress) && i - ((Long) this.c.get(inetaddress)).longValue() < 4000L) {
+                    if (this.c.containsKey(inetaddress) && !b(inetaddress) && i - ((Long) this.c.get(inetaddress)).longValue() < connectionThrottle) {
                         this.c.put(inetaddress, Long.valueOf(i));
                         socket.close();
                         continue;
@@ -72,25 +83,25 @@ public class DedicatedServerConnectionThread extends Thread {
                     this.c.put(inetaddress, Long.valueOf(i));
                 }
 
-                NetLoginHandler netloginhandler = new NetLoginHandler(this.f.d(), socket, "Connection #" + this.d++);
+                PendingConnection pendingconnection = new PendingConnection(this.f.d(), socket, "Connection #" + this.d++);
 
-                this.a(netloginhandler);
+                this.a(pendingconnection);
             } catch (IOException ioexception) {
-                ioexception.printStackTrace();
+                a.warning("DSCT: " + ioexception.getMessage()); // CraftBukkit
             }
         }
 
         System.out.println("Closing listening thread");
     }
 
-    private void a(NetLoginHandler netloginhandler) {
-        if (netloginhandler == null) {
+    private void a(PendingConnection pendingconnection) {
+        if (pendingconnection == null) {
             throw new IllegalArgumentException("Got null pendingconnection!");
         } else {
             List list = this.b;
 
             synchronized (this.b) {
-                this.b.add(netloginhandler);
+                this.b.add(pendingconnection);
             }
         }
     }

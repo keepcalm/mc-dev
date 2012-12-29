@@ -1,5 +1,11 @@
 package net.minecraft.server;
 
+// CraftBukkit start
+import org.bukkit.craftbukkit.event.CraftEventFactory;
+import org.bukkit.event.entity.EntityDamageEvent;
+import org.bukkit.event.entity.EntityRegainHealthEvent.RegainReason;
+// CraftBukkit end
+
 public class MobEffectList {
 
     public static final MobEffectList[] byId = new MobEffectList[32];
@@ -54,6 +60,8 @@ public class MobEffectList {
         }
 
         this.N = j;
+
+        org.bukkit.potion.PotionEffectType.registerPotionEffectType(new org.bukkit.craftbukkit.potion.CraftPotionEffectType(this)); // CraftBukkit
     }
 
     protected MobEffectList b(int i, int j) {
@@ -67,27 +75,51 @@ public class MobEffectList {
 
     public void tick(EntityLiving entityliving, int i) {
         if (this.id == REGENERATION.id) {
-            if (entityliving.getHealth() < entityliving.getMaxHealth()) {
-                entityliving.heal(1);
+            if (entityliving.getHealth() < entityliving.maxHealth) { // CraftBukkit - .getMaxHealth() -> .maxHealth
+                entityliving.heal(1, RegainReason.MAGIC_REGEN); // CraftBukkit
             }
         } else if (this.id == POISON.id) {
             if (entityliving.getHealth() > 1) {
-                entityliving.damageEntity(DamageSource.MAGIC, 1);
+                // CraftBukkit start
+                EntityDamageEvent event = CraftEventFactory.callEntityDamageEvent(null, entityliving, EntityDamageEvent.DamageCause.POISON, 1);
+
+                if (!event.isCancelled() && event.getDamage() > 0) {
+                    entityliving.damageEntity(DamageSource.MAGIC, event.getDamage());
+                }
+                // CraftBukkit end
             }
         } else if (this.id == WITHER.id) {
-            entityliving.damageEntity(DamageSource.WITHER, 1);
+            // CraftBukkit start
+            EntityDamageEvent event = CraftEventFactory.callEntityDamageEvent(null, entityliving, EntityDamageEvent.DamageCause.WITHER, 1);
+
+            if (!event.isCancelled() && event.getDamage() > 0) {
+                entityliving.damageEntity(DamageSource.WITHER, event.getDamage());
+            }
+            // CraftBukkit end
         } else if (this.id == HUNGER.id && entityliving instanceof EntityHuman) {
             ((EntityHuman) entityliving).j(0.025F * (float) (i + 1));
         } else if ((this.id != HEAL.id || entityliving.bA()) && (this.id != HARM.id || !entityliving.bA())) {
             if (this.id == HARM.id && !entityliving.bA() || this.id == HEAL.id && entityliving.bA()) {
-                entityliving.damageEntity(DamageSource.MAGIC, 6 << i);
+                // CraftBukkit start
+                EntityDamageEvent event = CraftEventFactory.callEntityDamageEvent(null, entityliving, EntityDamageEvent.DamageCause.MAGIC, 6 << i);
+
+                if (!event.isCancelled() && event.getDamage() > 0) {
+                    entityliving.damageEntity(DamageSource.MAGIC, event.getDamage());
+                }
+                // CraftBukkit end
             }
         } else {
-            entityliving.heal(6 << i);
+            entityliving.heal(6 << i, RegainReason.MAGIC); // CraftBukkit
         }
     }
 
     public void applyInstantEffect(EntityLiving entityliving, EntityLiving entityliving1, int i, double d0) {
+        // CraftBukkit start - delegate; we need EntityPotion
+        applyInstantEffect(entityliving, entityliving1, i, d0, null);
+    }
+
+    public void applyInstantEffect(EntityLiving entityliving, EntityLiving entityliving1, int i, double d0, EntityPotion potion) {
+        // CraftBukkit end
         int j;
 
         if ((this.id != HEAL.id || entityliving1.bA()) && (this.id != HARM.id || !entityliving1.bA())) {
@@ -96,12 +128,13 @@ public class MobEffectList {
                 if (entityliving == null) {
                     entityliving1.damageEntity(DamageSource.MAGIC, j);
                 } else {
-                    entityliving1.damageEntity(DamageSource.b(entityliving1, entityliving), j);
+                    // CraftBukkit - The "damager" needs to be the potion
+                    entityliving1.damageEntity(DamageSource.b(potion != null ? potion : entityliving1, entityliving), j);
                 }
             }
         } else {
             j = (int) (d0 * (double) (6 << i) + 0.5D);
-            entityliving1.heal(j);
+            entityliving1.heal(j, RegainReason.MAGIC); // CraftBukkit
         }
     }
 

@@ -1,5 +1,10 @@
 package net.minecraft.server;
 
+// CraftBukkit start
+import org.bukkit.craftbukkit.inventory.CraftInventoryFurnace;
+import org.bukkit.craftbukkit.inventory.CraftInventoryView;
+// CraftBukkit end
+
 public class ContainerFurnace extends Container {
 
     private TileEntityFurnace furnace;
@@ -7,11 +12,27 @@ public class ContainerFurnace extends Container {
     private int g = 0;
     private int h = 0;
 
+    // CraftBukkit start
+    private CraftInventoryView bukkitEntity = null;
+    private PlayerInventory player;
+
+    public CraftInventoryView getBukkitView() {
+        if (bukkitEntity != null) {
+            return bukkitEntity;
+        }
+
+        CraftInventoryFurnace inventory = new CraftInventoryFurnace(this.furnace);
+        bukkitEntity = new CraftInventoryView(this.player.player.getBukkitEntity(), inventory, this);
+        return bukkitEntity;
+    }
+    // CraftBukkit end
+
     public ContainerFurnace(PlayerInventory playerinventory, TileEntityFurnace tileentityfurnace) {
         this.furnace = tileentityfurnace;
         this.a(new Slot(tileentityfurnace, 0, 56, 17));
         this.a(new Slot(tileentityfurnace, 1, 56, 53));
         this.a(new SlotFurnaceResult(playerinventory.player, tileentityfurnace, 2, 116, 35));
+        this.player = playerinventory; // CraftBukkit - save player
 
         int i;
 
@@ -58,6 +79,7 @@ public class ContainerFurnace extends Container {
     }
 
     public boolean a(EntityHuman entityhuman) {
+        if (!this.checkReachable) return true; // CraftBukkit
         return this.furnace.a_(entityhuman);
     }
 

@@ -2,6 +2,8 @@ package net.minecraft.server;
 
 import java.util.List;
 
+import org.bukkit.event.entity.ProjectileHitEvent; // CraftBukkit
+
 public abstract class EntityFireball extends Entity {
 
     private int e = -1;
@@ -11,10 +13,12 @@ public abstract class EntityFireball extends Entity {
     private boolean i = false;
     public EntityLiving shooter;
     private int j;
-    private int as = 0;
+    private int at = 0;
     public double dirX;
     public double dirY;
     public double dirZ;
+    public float yield = 1; // CraftBukkit
+    public boolean isIncendiary = true; // CraftBukkit
 
     public EntityFireball(World world) {
         super(world);
@@ -43,6 +47,12 @@ public abstract class EntityFireball extends Entity {
         this.setPosition(this.locX, this.locY, this.locZ);
         this.height = 0.0F;
         this.motX = this.motY = this.motZ = 0.0D;
+        // CraftBukkit start - (added setDirection method)
+        this.setDirection(d0, d1, d2);
+    }
+
+    public void setDirection(double d0, double d1, double d2) {
+        // CraftBukkit end
         d0 += this.random.nextGaussian() * 0.4D;
         d1 += this.random.nextGaussian() * 0.4D;
         d2 += this.random.nextGaussian() * 0.4D;
@@ -76,9 +86,9 @@ public abstract class EntityFireball extends Entity {
                 this.motY *= (double) (this.random.nextFloat() * 0.2F);
                 this.motZ *= (double) (this.random.nextFloat() * 0.2F);
                 this.j = 0;
-                this.as = 0;
+                this.at = 0;
             } else {
-                ++this.as;
+                ++this.at;
             }
 
             Vec3D vec3d = this.world.getVec3DPool().create(this.locX, this.locY, this.locZ);
@@ -98,13 +108,13 @@ public abstract class EntityFireball extends Entity {
             for (int j = 0; j < list.size(); ++j) {
                 Entity entity1 = (Entity) list.get(j);
 
-                if (entity1.L() && (!entity1.i(this.shooter) || this.as >= 25)) {
+                if (entity1.L() && (!entity1.i(this.shooter) || this.at >= 25)) {
                     float f = 0.3F;
                     AxisAlignedBB axisalignedbb = entity1.boundingBox.grow((double) f, (double) f, (double) f);
                     MovingObjectPosition movingobjectposition1 = axisalignedbb.a(vec3d, vec3d1);
 
                     if (movingobjectposition1 != null) {
-                        double d1 = vec3d.d(movingobjectposition1.pos);
+                        double d1 = vec3d.distanceSquared(movingobjectposition1.pos); // CraftBukkit - distance efficiency
 
                         if (d1 < d0 || d0 == 0.0D) {
                             entity = entity1;
@@ -120,6 +130,13 @@ public abstract class EntityFireball extends Entity {
 
             if (movingobjectposition != null) {
                 this.a(movingobjectposition);
+
+                // CraftBukkit start
+                if (this.dead) {
+                    ProjectileHitEvent phe = new ProjectileHitEvent((org.bukkit.entity.Projectile) this.getBukkitEntity());
+                    this.world.getServer().getPluginManager().callEvent(phe);
+                }
+                // CraftBukkit end
             }
 
             this.locX += this.motX;
@@ -182,7 +199,8 @@ public abstract class EntityFireball extends Entity {
         nbttagcompound.setShort("zTile", (short) this.g);
         nbttagcompound.setByte("inTile", (byte) this.h);
         nbttagcompound.setByte("inGround", (byte) (this.i ? 1 : 0));
-        nbttagcompound.set("direction", this.a(new double[] { this.motX, this.motY, this.motZ}));
+        // CraftBukkit - Fix direction being mismapped to invalid variables
+        nbttagcompound.set("power", this.a(new double[] { this.dirX, this.dirY, this.dirZ}));
     }
 
     public void a(NBTTagCompound nbttagcompound) {
@@ -191,12 +209,14 @@ public abstract class EntityFireball extends Entity {
         this.g = nbttagcompound.getShort("zTile");
         this.h = nbttagcompound.getByte("inTile") & 255;
         this.i = nbttagcompound.getByte("inGround") == 1;
-        if (nbttagcompound.hasKey("direction")) {
-            NBTTagList nbttaglist = nbttagcompound.getList("direction");
+        // CraftBukkit - direction -> power
+        if (nbttagcompound.hasKey("power")) {
+            NBTTagList nbttaglist = nbttagcompound.getList("power");
 
-            this.motX = ((NBTTagDouble) nbttaglist.get(0)).data;
-            this.motY = ((NBTTagDouble) nbttaglist.get(1)).data;
-            this.motZ = ((NBTTagDouble) nbttaglist.get(2)).data;
+            this.dirX = ((NBTTagDouble) nbttaglist.get(0)).data;
+            this.dirY = ((NBTTagDouble) nbttaglist.get(1)).data;
+            this.dirZ = ((NBTTagDouble) nbttaglist.get(2)).data;
+            // CraftBukkit end
         } else {
             this.die();
         }

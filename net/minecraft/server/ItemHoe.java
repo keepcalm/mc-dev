@@ -1,5 +1,7 @@
 package net.minecraft.server;
 
+import org.bukkit.craftbukkit.block.CraftBlockState; // CraftBukkit
+
 public class ItemHoe extends Item {
 
     protected EnumToolMaterial a;
@@ -28,7 +30,19 @@ public class ItemHoe extends Item {
                 if (world.isStatic) {
                     return true;
                 } else {
+                    CraftBlockState blockState = CraftBlockState.getBlockState(world, i, j, k); // CraftBukkit
+
                     world.setTypeId(i, j, k, block.id);
+
+                    // CraftBukkit start - Hoes - blockface -1 for 'SELF'
+                    org.bukkit.event.block.BlockPlaceEvent event = org.bukkit.craftbukkit.event.CraftEventFactory.callBlockPlaceEvent(world, entityhuman, blockState, i, j, k);
+
+                    if (event.isCancelled() || !event.canBuild()) {
+                        event.getBlockPlaced().setTypeId(blockState.getTypeId());
+                        return false;
+                    }
+                    // CraftBukkit end
+
                     itemstack.damage(1, entityhuman);
                     return true;
                 }

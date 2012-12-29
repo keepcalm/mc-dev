@@ -8,6 +8,11 @@ import java.util.List;
 import java.util.Map;
 import java.util.Random;
 
+// CraftBukkit start
+import org.bukkit.Bukkit;
+import org.bukkit.Location;
+// CraftBukkit end
+
 public class Chunk {
 
     public static boolean a;
@@ -54,12 +59,21 @@ public class Chunk {
         this.heightMap = new int[256];
 
         for (int k = 0; k < this.entitySlices.length; ++k) {
-            this.entitySlices[k] = new ArrayList();
+            this.entitySlices[k] = new org.bukkit.craftbukkit.util.UnsafeList(); // CraftBukkit - ArrayList -> UnsafeList
         }
 
         Arrays.fill(this.b, -999);
         Arrays.fill(this.s, (byte) -1);
+
+        // CraftBukkit start
+        if (!(this instanceof EmptyChunk)) {
+            this.bukkitChunk = new org.bukkit.craftbukkit.CraftChunk(this);
+        }
     }
+
+    public org.bukkit.Chunk bukkitChunk;
+    public boolean mustSave;
+    // CraftBukkit end
 
     public Chunk(World world, byte[] abyte, int i, int j) {
         this(world, i, j);
@@ -74,7 +88,7 @@ public class Chunk {
                         int k1 = j1 >> 4;
 
                         if (this.sections[k1] == null) {
-                            this.sections[k1] = new ChunkSection(k1 << 4);
+                            this.sections[k1] = new ChunkSection(k1 << 4, !world.worldProvider.f);
                         }
 
                         this.sections[k1].a(l, j1 & 15, i1, b0);
@@ -373,7 +387,7 @@ public class Chunk {
                     return false;
                 }
 
-                chunksection = this.sections[j >> 4] = new ChunkSection(j >> 4 << 4);
+                chunksection = this.sections[j >> 4] = new ChunkSection(j >> 4 << 4, !world.worldProvider.f);
                 flag = j >= k1;
             }
 
@@ -415,10 +429,20 @@ public class Chunk {
 
                 if (l != 0) {
                     if (!this.world.isStatic) {
-                        Block.byId[l].onPlace(this.world, j2, j, k2);
+                        // CraftBukkit start - Don't extend piston until data is set
+                        if (!(Block.byId[l] instanceof BlockPiston) || i2 != 0) {
+                            Block.byId[l].onPlace(this.world, j2, j, k2);
+                        }
+                        // CraftBukkit end
                     }
 
                     if (Block.byId[l] instanceof BlockContainer) {
+                        // CraftBukkit start - don't create tile entity if placement failed
+                        if (this.getTypeId(i, j, k) != l) {
+                            return false;
+                        }
+                        // CraftBukkit end
+
                         tileentity = this.e(i, j, k);
                         if (tileentity == null) {
                             tileentity = ((BlockContainer) Block.byId[l]).a(this.world);
@@ -474,14 +498,14 @@ public class Chunk {
     public int getBrightness(EnumSkyBlock enumskyblock, int i, int j, int k) {
         ChunkSection chunksection = this.sections[j >> 4];
 
-        return chunksection == null ? (this.d(i, j, k) ? enumskyblock.c : 0) : (enumskyblock == EnumSkyBlock.SKY ? chunksection.c(i, j & 15, k) : (enumskyblock == EnumSkyBlock.BLOCK ? chunksection.d(i, j & 15, k) : enumskyblock.c));
+        return chunksection == null ? (this.d(i, j, k) ? enumskyblock.c : 0) : (enumskyblock == EnumSkyBlock.SKY ? (this.world.worldProvider.f ? 0 : chunksection.c(i, j & 15, k)) : (enumskyblock == EnumSkyBlock.BLOCK ? chunksection.d(i, j & 15, k) : enumskyblock.c));
     }
 
     public void a(EnumSkyBlock enumskyblock, int i, int j, int k, int l) {
         ChunkSection chunksection = this.sections[j >> 4];
 
         if (chunksection == null) {
-            chunksection = this.sections[j >> 4] = new ChunkSection(j >> 4 << 4);
+            chunksection = this.sections[j >> 4] = new ChunkSection(j >> 4 << 4, !world.worldProvider.f);
             this.initLighting();
         }
 
@@ -524,8 +548,11 @@ public class Chunk {
         int j = MathHelper.floor(entity.locZ / 16.0D);
 
         if (i != this.x || j != this.z) {
-            System.out.println("Wrong location! " + entity);
-            Thread.dumpStack();
+            // CraftBukkit start
+            Bukkit.getLogger().warning("Wrong location for " + entity + " in world '" + world.getWorld().getName() + "'!");
+            // Thread.dumpStack();
+            Bukkit.getLogger().warning("Entity is at " + entity.locX + "," + entity.locZ + " (chunk " + i + "," + j + ") but was stored in chunk " + this.x + "," + this.z);
+            // CraftBukkit end
         }
 
         int k = MathHelper.floor(entity.locY / 16.0D);
@@ -613,6 +640,13 @@ public class Chunk {
         if (this.getTypeId(i, j, k) != 0 && Block.byId[this.getTypeId(i, j, k)] instanceof BlockContainer) {
             tileentity.s();
             this.tileEntities.put(chunkposition, tileentity);
+            // CraftBukkit start
+        } else {
+            System.out.println("Attempted to place a tile entity (" + tileentity + ") at " + tileentity.x + "," + tileentity.y + "," + tileentity.z
+                    + " (" + org.bukkit.Material.getMaterial(getTypeId(i, j, k)) + ") where there was no entity tile!");
+            System.out.println("Chunk coordinates: " + (this.x * 16) + "," + (this.z * 16));
+            new Exception().printStackTrace();
+            // CraftBukkit end
         }
     }
 
@@ -648,6 +682,19 @@ public class Chunk {
         }
 
         for (int i = 0; i < this.entitySlices.length; ++i) {
+            // CraftBukkit start
+            java.util.Iterator<Object> iter = this.entitySlices[i].iterator();
+            while (iter.hasNext()) {
+                Entity entity = (Entity) iter.next();
+
+                // Do not pass along players, as doing so can get them stuck outside of time.
+                // (which for example disables inventory icon updates and prevents block breaking)
+                if (entity instanceof EntityPlayer) {
+                    iter.remove();
+                }
+            }
+            // CraftBukkit end
+
             this.world.b(this.entitySlices[i]);
         }
     }

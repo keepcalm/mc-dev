@@ -10,6 +10,21 @@ import java.util.Random;
 import java.util.Set;
 import java.util.concurrent.Callable;
 
+// CraftBukkit start
+import org.bukkit.Bukkit;
+import org.bukkit.craftbukkit.util.LongHashSet;
+import org.bukkit.craftbukkit.util.UnsafeList;
+import org.bukkit.generator.ChunkGenerator;
+import org.bukkit.craftbukkit.CraftServer;
+import org.bukkit.craftbukkit.CraftWorld;
+import org.bukkit.craftbukkit.event.CraftEventFactory;
+import org.bukkit.event.block.BlockCanBuildEvent;
+import org.bukkit.event.block.BlockPhysicsEvent;
+import org.bukkit.event.entity.CreatureSpawnEvent.SpawnReason;
+import org.bukkit.event.weather.WeatherChangeEvent;
+import org.bukkit.event.weather.ThunderChangeEvent;
+// CraftBukkit end
+
 public abstract class World implements IBlockAccess {
 
     public boolean d = false;
@@ -28,31 +43,34 @@ public abstract class World implements IBlockAccess {
     protected float n;
     protected float o;
     protected float p;
-    protected int q = 0;
-    public int r = 0;
+    public int q = 0;
     public boolean suppressPhysics = false;
     public int difficulty;
     public Random random = new Random();
-    public final WorldProvider worldProvider;
-    protected List w = new ArrayList();
-    protected IChunkProvider chunkProvider;
+    public WorldProvider worldProvider; // CraftBukkit - remove final
+    protected List v = new ArrayList();
+    public IChunkProvider chunkProvider; // CraftBukkit - protected -> public
     protected final IDataManager dataManager;
-    protected WorldData worldData;
+    public WorldData worldData; // CraftBukkit - protected -> public
     public boolean isLoading;
     public WorldMapCollection worldMaps;
     public final VillageCollection villages;
     protected final VillageSiege siegeManager = new VillageSiege(this);
     public final MethodProfiler methodProfiler;
-    private final Vec3DPool K = new Vec3DPool(300, 2000);
-    private final Calendar L = Calendar.getInstance();
-    private ArrayList M = new ArrayList();
-    private boolean N;
-    protected boolean allowMonsters = true;
-    protected boolean allowAnimals = true;
-    protected Set chunkTickList = new HashSet();
-    private int O;
-    int[] I;
-    private List P;
+    private final Vec3DPool J = new Vec3DPool(300, 2000);
+    private final Calendar K = Calendar.getInstance();
+    private UnsafeList L = new UnsafeList(); // CraftBukkit - ArrayList -> UnsafeList
+    private boolean M;
+    // CraftBukkit start - public, longhashset
+    public boolean allowMonsters = true;
+    public boolean allowAnimals = true;
+    protected LongHashSet chunkTickList = new LongHashSet();
+    public long ticksPerAnimalSpawns;
+    public long ticksPerMonsterSpawns;
+    // CraftBukkit end
+    private int N;
+    int[] H;
+    private List O;
     public boolean isStatic;
 
     public BiomeBase getBiome(int i, int j) {
@@ -71,10 +89,35 @@ public abstract class World implements IBlockAccess {
         return this.worldProvider.d;
     }
 
-    public World(IDataManager idatamanager, String s, WorldSettings worldsettings, WorldProvider worldprovider, MethodProfiler methodprofiler) {
-        this.O = this.random.nextInt(12000);
-        this.I = new int['\u8000'];
-        this.P = new ArrayList();
+    // CraftBukkit start
+    private final CraftWorld world;
+    public boolean pvpMode;
+    public boolean keepSpawnInMemory = true;
+    public ChunkGenerator generator;
+    Chunk lastChunkAccessed;
+    int lastXAccessed = Integer.MIN_VALUE;
+    int lastZAccessed = Integer.MIN_VALUE;
+    final Object chunkLock = new Object();
+
+    public CraftWorld getWorld() {
+        return this.world;
+    }
+
+    public CraftServer getServer() {
+        return (CraftServer) Bukkit.getServer();
+    }
+
+    // Changed signature
+    public World(IDataManager idatamanager, String s, WorldSettings worldsettings, WorldProvider worldprovider, MethodProfiler methodprofiler, ChunkGenerator gen, org.bukkit.World.Environment env) {
+        this.generator = gen;
+        this.world = new CraftWorld((WorldServer) this, gen, env);
+        this.ticksPerAnimalSpawns = this.getServer().getTicksPerAnimalSpawns(); // CraftBukkit
+        this.ticksPerMonsterSpawns = this.getServer().getTicksPerMonsterSpawns(); // CraftBukkit
+        // CraftBukkit end
+
+        this.N = this.random.nextInt(12000);
+        this.H = new int['\u8000'];
+        this.O = new UnsafeList(); // CraftBukkit - ArrayList -> UnsafeList
         this.isStatic = false;
         this.dataManager = idatamanager;
         this.methodProfiler = methodprofiler;
@@ -126,6 +169,8 @@ public abstract class World implements IBlockAccess {
 
         this.x();
         this.a();
+
+        this.getServer().addWorld(this.world); // CraftBukkit
     }
 
     protected abstract IChunkProvider j();
@@ -207,7 +252,8 @@ public abstract class World implements IBlockAccess {
 
             for (int k1 = i; k1 <= l; ++k1) {
                 for (int l1 = k; l1 <= j1; ++l1) {
-                    if (!this.isChunkLoaded(k1, l1)) {
+                    // CraftBukkit - check unload queue too so we don't leak a chunk
+                    if (!this.isChunkLoaded(k1, l1) || ((WorldServer) this).chunkProviderServer.unloadQueue.contains(k1, l1)) {
                         return false;
                     }
                 }
@@ -227,9 +273,20 @@ public abstract class World implements IBlockAccess {
         return this.getChunkAt(i >> 4, j >> 4);
     }
 
+    // CraftBukkit start
     public Chunk getChunkAt(int i, int j) {
-        return this.chunkProvider.getOrCreateChunk(i, j);
+        Chunk result = null;
+        synchronized (this.chunkLock) {
+            if (this.lastChunkAccessed == null || this.lastXAccessed != i || this.lastZAccessed != j) {
+                this.lastChunkAccessed = this.chunkProvider.getOrCreateChunk(i, j);
+                this.lastXAccessed = i;
+                this.lastZAccessed = j;
+            }
+            result = this.lastChunkAccessed;
+        }
+        return result;
     }
+    // CraftBukkit end
 
     public boolean setRawTypeIdAndData(int i, int j, int k, int l, int i1) {
         return this.setRawTypeIdAndData(i, j, k, l, i1, true);
@@ -337,8 +394,11 @@ public abstract class World implements IBlockAccess {
     }
 
     public boolean setTypeId(int i, int j, int k, int l) {
+        // CraftBukkit start
+        int old = this.getTypeId(i, j, k);
         if (this.setRawTypeId(i, j, k, l)) {
-            this.update(i, j, k, l);
+            this.update(i, j, k, l == 0 ? old : l);
+            // CraftBukkit end
             return true;
         } else {
             return false;
@@ -355,8 +415,8 @@ public abstract class World implements IBlockAccess {
     }
 
     public void notify(int i, int j, int k) {
-        for (int l = 0; l < this.w.size(); ++l) {
-            ((IWorldAccess) this.w.get(l)).a(i, j, k);
+        for (int l = 0; l < this.v.size(); ++l) {
+            ((IWorldAccess) this.v.get(l)).a(i, j, k);
         }
     }
 
@@ -383,14 +443,14 @@ public abstract class World implements IBlockAccess {
     }
 
     public void j(int i, int j, int k) {
-        for (int l = 0; l < this.w.size(); ++l) {
-            ((IWorldAccess) this.w.get(l)).a(i, j, k, i, j, k);
+        for (int l = 0; l < this.v.size(); ++l) {
+            ((IWorldAccess) this.v.get(l)).a(i, j, k, i, j, k);
         }
     }
 
     public void e(int i, int j, int k, int l, int i1, int j1) {
-        for (int k1 = 0; k1 < this.w.size(); ++k1) {
-            ((IWorldAccess) this.w.get(k1)).a(i, j, k, l, i1, j1);
+        for (int k1 = 0; k1 < this.v.size(); ++k1) {
+            ((IWorldAccess) this.v.get(k1)).a(i, j, k, l, i1, j1);
         }
     }
 
@@ -410,6 +470,18 @@ public abstract class World implements IBlockAccess {
 
             if (block != null) {
                 try {
+                    // CraftBukkit start
+                    CraftWorld world = ((WorldServer) this).getWorld();
+                    if (world != null) {
+                        BlockPhysicsEvent event = new BlockPhysicsEvent(world.getBlockAt(i, j, k), l);
+                        this.getServer().getPluginManager().callEvent(event);
+
+                        if (event.isCancelled()) {
+                            return;
+                        }
+                    }
+                    // CraftBukkit end
+
                     block.doPhysics(this, i, j, k, l);
                 } catch (Throwable throwable) {
                     CrashReport crashreport = CrashReport.a(throwable, "Exception while updating neighbours");
@@ -563,8 +635,8 @@ public abstract class World implements IBlockAccess {
 
                         chunk.a(enumskyblock, i & 15, j, k & 15, l);
 
-                        for (int i1 = 0; i1 < this.w.size(); ++i1) {
-                            ((IWorldAccess) this.w.get(i1)).b(i, j, k);
+                        for (int i1 = 0; i1 < this.v.size(); ++i1) {
+                            ((IWorldAccess) this.v.get(i1)).b(i, j, k);
                         }
                     }
                 }
@@ -573,8 +645,8 @@ public abstract class World implements IBlockAccess {
     }
 
     public void o(int i, int j, int k) {
-        for (int l = 0; l < this.w.size(); ++l) {
-            ((IWorldAccess) this.w.get(l)).b(i, j, k);
+        for (int l = 0; l < this.v.size(); ++l) {
+            ((IWorldAccess) this.v.get(l)).b(i, j, k);
         }
     }
 
@@ -739,9 +811,11 @@ public abstract class World implements IBlockAccess {
                         MovingObjectPosition movingobjectposition1 = block1.a(this, l, i1, j1, vec3d, vec3d1);
 
                         if (movingobjectposition1 != null) {
+                            vec3d2.b.release(vec3d2); // CraftBukkit
                             return movingobjectposition1;
                         }
                     }
+                    vec3d2.b.release(vec3d2); // CraftBukkit
                 }
 
                 return null;
@@ -755,39 +829,39 @@ public abstract class World implements IBlockAccess {
 
     public void makeSound(Entity entity, String s, float f, float f1) {
         if (entity != null && s != null) {
-            for (int i = 0; i < this.w.size(); ++i) {
-                ((IWorldAccess) this.w.get(i)).a(s, entity.locX, entity.locY - (double) entity.height, entity.locZ, f, f1);
+            for (int i = 0; i < this.v.size(); ++i) {
+                ((IWorldAccess) this.v.get(i)).a(s, entity.locX, entity.locY - (double) entity.height, entity.locZ, f, f1);
             }
         }
     }
 
     public void a(EntityHuman entityhuman, String s, float f, float f1) {
         if (entityhuman != null && s != null) {
-            for (int i = 0; i < this.w.size(); ++i) {
-                ((IWorldAccess) this.w.get(i)).a(entityhuman, s, entityhuman.locX, entityhuman.locY - (double) entityhuman.height, entityhuman.locZ, f, f1);
+            for (int i = 0; i < this.v.size(); ++i) {
+                ((IWorldAccess) this.v.get(i)).a(entityhuman, s, entityhuman.locX, entityhuman.locY - (double) entityhuman.height, entityhuman.locZ, f, f1);
             }
         }
     }
 
     public void makeSound(double d0, double d1, double d2, String s, float f, float f1) {
         if (s != null) {
-            for (int i = 0; i < this.w.size(); ++i) {
-                ((IWorldAccess) this.w.get(i)).a(s, d0, d1, d2, f, f1);
+            for (int i = 0; i < this.v.size(); ++i) {
+                ((IWorldAccess) this.v.get(i)).a(s, d0, d1, d2, f, f1);
             }
         }
     }
 
-    public void b(double d0, double d1, double d2, String s, float f, float f1) {}
+    public void a(double d0, double d1, double d2, String s, float f, float f1, boolean flag) {}
 
     public void a(String s, int i, int j, int k) {
-        for (int l = 0; l < this.w.size(); ++l) {
-            ((IWorldAccess) this.w.get(l)).a(s, i, j, k);
+        for (int l = 0; l < this.v.size(); ++l) {
+            ((IWorldAccess) this.v.get(l)).a(s, i, j, k);
         }
     }
 
     public void addParticle(String s, double d0, double d1, double d2, double d3, double d4, double d5) {
-        for (int i = 0; i < this.w.size(); ++i) {
-            ((IWorldAccess) this.w.get(i)).a(s, d0, d1, d2, d3, d4, d5);
+        for (int i = 0; i < this.v.size(); ++i) {
+            ((IWorldAccess) this.v.get(i)).a(s, d0, d1, d2, d3, d4, d5);
         }
     }
 
@@ -796,7 +870,15 @@ public abstract class World implements IBlockAccess {
         return true;
     }
 
+    // CraftBukkit start - used for entities other than creatures
     public boolean addEntity(Entity entity) {
+        return this.addEntity(entity, SpawnReason.DEFAULT); // Set reason as DEFAULT
+    }
+
+    public boolean addEntity(Entity entity, SpawnReason spawnReason) { // Changed signature, added SpawnReason
+        if (entity == null) return false;
+        // CraftBukkit end
+
         int i = MathHelper.floor(entity.locX / 16.0D);
         int j = MathHelper.floor(entity.locZ / 16.0D);
         boolean flag = false;
@@ -805,7 +887,35 @@ public abstract class World implements IBlockAccess {
             flag = true;
         }
 
+        // CraftBukkit start
+        org.bukkit.event.Cancellable event = null;
+        if (entity instanceof EntityLiving && !(entity instanceof EntityPlayer)) {
+            boolean isAnimal = entity instanceof EntityAnimal || entity instanceof EntityWaterAnimal || entity instanceof EntityGolem;
+            boolean isMonster = entity instanceof EntityMonster || entity instanceof EntityGhast || entity instanceof EntitySlime;
+
+            if (spawnReason != SpawnReason.CUSTOM) {
+                if (isAnimal && !allowAnimals || isMonster && !allowMonsters)  {
+                    entity.dead = true;
+                    return false;
+                }
+            }
+
+            event = CraftEventFactory.callCreatureSpawnEvent((EntityLiving) entity, spawnReason);
+        } else if (entity instanceof EntityItem) {
+            event = CraftEventFactory.callItemSpawnEvent((EntityItem) entity);
+        } else if (entity.getBukkitEntity() instanceof org.bukkit.entity.Projectile) {
+            // Not all projectiles extend EntityProjectile, so check for Bukkit interface instead
+            event = CraftEventFactory.callProjectileLaunchEvent(entity);
+        }
+
+        if (event != null && (event.isCancelled() || entity.dead)) {
+            entity.dead = true;
+            return false;
+        }
+        // CraftBukkit end
+
         if (!flag && !this.isChunkLoaded(i, j)) {
+            entity.dead = true; // CraftBukkit
             return false;
         } else {
             if (entity instanceof EntityHuman) {
@@ -823,15 +933,19 @@ public abstract class World implements IBlockAccess {
     }
 
     protected void a(Entity entity) {
-        for (int i = 0; i < this.w.size(); ++i) {
-            ((IWorldAccess) this.w.get(i)).a(entity);
+        for (int i = 0; i < this.v.size(); ++i) {
+            ((IWorldAccess) this.v.get(i)).a(entity);
         }
+
+        entity.valid = true; // CraftBukkit
     }
 
     protected void b(Entity entity) {
-        for (int i = 0; i < this.w.size(); ++i) {
-            ((IWorldAccess) this.w.get(i)).b(entity);
+        for (int i = 0; i < this.v.size(); ++i) {
+            ((IWorldAccess) this.v.get(i)).b(entity);
         }
+
+        entity.valid = false; // CraftBukkit
     }
 
     public void kill(Entity entity) {
@@ -869,11 +983,11 @@ public abstract class World implements IBlockAccess {
     }
 
     public void addIWorldAccess(IWorldAccess iworldaccess) {
-        this.w.add(iworldaccess);
+        this.v.add(iworldaccess);
     }
 
     public List getCubes(Entity entity, AxisAlignedBB axisalignedbb) {
-        this.M.clear();
+        this.L.clear();
         int i = MathHelper.floor(axisalignedbb.a);
         int j = MathHelper.floor(axisalignedbb.d + 1.0D);
         int k = MathHelper.floor(axisalignedbb.b);
@@ -888,7 +1002,7 @@ public abstract class World implements IBlockAccess {
                         Block block = Block.byId[this.getTypeId(k1, i2, l1)];
 
                         if (block != null) {
-                            block.a(this, k1, i2, l1, axisalignedbb, this.M, entity);
+                            block.a(this, k1, i2, l1, axisalignedbb, this.L, entity);
                         }
                     }
                 }
@@ -902,20 +1016,20 @@ public abstract class World implements IBlockAccess {
             AxisAlignedBB axisalignedbb1 = ((Entity) list.get(j2)).E();
 
             if (axisalignedbb1 != null && axisalignedbb1.a(axisalignedbb)) {
-                this.M.add(axisalignedbb1);
+                this.L.add(axisalignedbb1);
             }
 
             axisalignedbb1 = entity.g((Entity) list.get(j2));
             if (axisalignedbb1 != null && axisalignedbb1.a(axisalignedbb)) {
-                this.M.add(axisalignedbb1);
+                this.L.add(axisalignedbb1);
             }
         }
 
-        return this.M;
+        return this.L;
     }
 
     public List a(AxisAlignedBB axisalignedbb) {
-        this.M.clear();
+        this.L.clear();
         int i = MathHelper.floor(axisalignedbb.a);
         int j = MathHelper.floor(axisalignedbb.d + 1.0D);
         int k = MathHelper.floor(axisalignedbb.b);
@@ -930,14 +1044,14 @@ public abstract class World implements IBlockAccess {
                         Block block = Block.byId[this.getTypeId(k1, i2, l1)];
 
                         if (block != null) {
-                            block.a(this, k1, i2, l1, axisalignedbb, this.M, (Entity) null);
+                            block.a(this, k1, i2, l1, axisalignedbb, this.L, (Entity) null);
                         }
                     }
                 }
             }
         }
 
-        return this.M;
+        return this.L;
     }
 
     public int a(float f) {
@@ -1001,8 +1115,19 @@ public abstract class World implements IBlockAccess {
 
         for (i = 0; i < this.i.size(); ++i) {
             entity = (Entity) this.i.get(i);
+            // CraftBukkit start - fixed an NPE, don't process entities in chunks queued for unload
+            if (entity == null) {
+                continue;
+            }
+
+            ChunkProviderServer chunkProviderServer = ((WorldServer) this).chunkProviderServer;
+            if (chunkProviderServer.unloadQueue.contains(MathHelper.floor(entity.locX) >> 4, MathHelper.floor(entity.locZ) >> 4)) {
+                continue;
+            }
+            // CraftBukkit end
 
             try {
+                ++entity.ticksLived;
                 entity.j_();
             } catch (Throwable throwable) {
                 crashreport = CrashReport.a(throwable, "Ticking entity");
@@ -1045,6 +1170,14 @@ public abstract class World implements IBlockAccess {
 
         for (i = 0; i < this.entityList.size(); ++i) {
             entity = (Entity) this.entityList.get(i);
+
+            // CraftBukkit start - don't tick entities in chunks queued for unload
+            ChunkProviderServer chunkProviderServer = ((WorldServer) this).chunkProviderServer;
+            if (chunkProviderServer.unloadQueue.contains(MathHelper.floor(entity.locX) >> 4, MathHelper.floor(entity.locZ) >> 4)) {
+                continue;
+            }
+            // CraftBukkit end
+
             if (entity.vehicle != null) {
                 if (!entity.vehicle.dead && entity.vehicle.passenger == entity) {
                     continue;
@@ -1088,11 +1221,17 @@ public abstract class World implements IBlockAccess {
         }
 
         this.methodProfiler.c("tileEntities");
-        this.N = true;
+        this.M = true;
         Iterator iterator = this.tileEntityList.iterator();
 
         while (iterator.hasNext()) {
             TileEntity tileentity = (TileEntity) iterator.next();
+            // CraftBukkit start - don't tick entities in chunks queued for unload
+            ChunkProviderServer chunkProviderServer = ((WorldServer) this).chunkProviderServer;
+            if (chunkProviderServer.unloadQueue.contains(tileentity.x >> 4, tileentity.z >> 4)) {
+                continue;
+            }
+            // CraftBukkit end
 
             if (!tileentity.r() && tileentity.o() && this.isLoaded(tileentity.x, tileentity.y, tileentity.z)) {
                 try {
@@ -1122,7 +1261,7 @@ public abstract class World implements IBlockAccess {
             }
         }
 
-        this.N = false;
+        this.M = false;
         if (!this.b.isEmpty()) {
             this.tileEntityList.removeAll(this.b);
             this.b.clear();
@@ -1134,15 +1273,22 @@ public abstract class World implements IBlockAccess {
                 TileEntity tileentity1 = (TileEntity) this.a.get(l);
 
                 if (!tileentity1.r()) {
+                    /* CraftBukkit start - order matters, moved down
                     if (!this.tileEntityList.contains(tileentity1)) {
                         this.tileEntityList.add(tileentity1);
                     }
+                    // CraftBukkit end */
 
                     if (this.isChunkLoaded(tileentity1.x >> 4, tileentity1.z >> 4)) {
                         Chunk chunk1 = this.getChunkAt(tileentity1.x >> 4, tileentity1.z >> 4);
 
                         if (chunk1 != null) {
                             chunk1.a(tileentity1.x & 15, tileentity1.y, tileentity1.z & 15, tileentity1);
+                            // CraftBukkit start - moved down from above
+                            if (!this.tileEntityList.contains(tileentity1)) {
+                                this.tileEntityList.add(tileentity1);
+                            }
+                            // CraftBukkit end
                         }
                     }
 
@@ -1158,7 +1304,7 @@ public abstract class World implements IBlockAccess {
     }
 
     public void a(Collection collection) {
-        if (this.N) {
+        if (this.M) {
             this.a.addAll(collection);
         } else {
             this.tileEntityList.addAll(collection);
@@ -1184,6 +1330,7 @@ public abstract class World implements IBlockAccess {
                 if (entity.vehicle != null) {
                     entity.U();
                 } else {
+                    ++entity.ticksLived;
                     entity.j_();
                 }
             }
@@ -1371,7 +1518,7 @@ public abstract class World implements IBlockAccess {
                         Block block = Block.byId[this.getTypeId(k1, l1, i2)];
 
                         if (block != null && block.material == material) {
-                            double d0 = (double) ((float) (l1 + 1) - BlockFluids.d(this.getData(k1, l1, i2)));
+                            double d0 = (double) ((float) (l1 + 1) - BlockFluids.e(this.getData(k1, l1, i2)));
 
                             if ((double) l >= d0) {
                                 flag = true;
@@ -1390,6 +1537,7 @@ public abstract class World implements IBlockAccess {
                 entity.motY += vec3d.d * d1;
                 entity.motZ += vec3d.e * d1;
             }
+            vec3d.b.release(vec3d); // CraftBukkit - pop it - we're done
 
             return flag;
         }
@@ -1471,6 +1619,7 @@ public abstract class World implements IBlockAccess {
         int i = 0;
         int j = 0;
 
+        Vec3D vec3d2 = vec3d.b.create(0, 0, 0); // CraftBukkit
         for (float f = 0.0F; f <= 1.0F; f = (float) ((double) f + d0)) {
             for (float f1 = 0.0F; f1 <= 1.0F; f1 = (float) ((double) f1 + d1)) {
                 for (float f2 = 0.0F; f2 <= 1.0F; f2 = (float) ((double) f2 + d2)) {
@@ -1478,7 +1627,7 @@ public abstract class World implements IBlockAccess {
                     double d4 = axisalignedbb.b + (axisalignedbb.e - axisalignedbb.b) * (double) f1;
                     double d5 = axisalignedbb.c + (axisalignedbb.f - axisalignedbb.c) * (double) f2;
 
-                    if (this.a(this.getVec3DPool().create(d3, d4, d5), vec3d) == null) {
+                    if (this.a(vec3d2.b(d3, d4, d5), vec3d) == null) { // CraftBukkit
                         ++i;
                     }
 
@@ -1486,6 +1635,7 @@ public abstract class World implements IBlockAccess {
                 }
             }
         }
+        vec3d2.b.release(vec3d2); // CraftBukkit
 
         return (float) i / (float) j;
     }
@@ -1553,7 +1703,7 @@ public abstract class World implements IBlockAccess {
 
     public void setTileEntity(int i, int j, int k, TileEntity tileentity) {
         if (tileentity != null && !tileentity.r()) {
-            if (this.N) {
+            if (this.M) {
                 tileentity.x = i;
                 tileentity.y = j;
                 tileentity.z = k;
@@ -1572,7 +1722,7 @@ public abstract class World implements IBlockAccess {
     public void r(int i, int j, int k) {
         TileEntity tileentity = this.getTileEntity(i, j, k);
 
-        if (tileentity != null && this.N) {
+        if (tileentity != null && this.M) {
             tileentity.w_();
             this.a.remove(tileentity);
         } else {
@@ -1665,10 +1815,6 @@ public abstract class World implements IBlockAccess {
 
     protected void n() {
         if (!this.worldProvider.f) {
-            if (this.q > 0) {
-                --this.q;
-            }
-
             int i = this.worldData.getThunderDuration();
 
             if (i <= 0) {
@@ -1681,7 +1827,13 @@ public abstract class World implements IBlockAccess {
                 --i;
                 this.worldData.setThunderDuration(i);
                 if (i <= 0) {
-                    this.worldData.setThundering(!this.worldData.isThundering());
+                    // CraftBukkit start
+                    ThunderChangeEvent thunder = new ThunderChangeEvent(this.getWorld(), !this.worldData.isThundering());
+                    this.getServer().getPluginManager().callEvent(thunder);
+                    if (!thunder.isCancelled()) {
+                        this.worldData.setThundering(!this.worldData.isThundering());
+                    }
+                    // CraftBukkit end
                 }
             }
 
@@ -1697,7 +1849,14 @@ public abstract class World implements IBlockAccess {
                 --j;
                 this.worldData.setWeatherDuration(j);
                 if (j <= 0) {
-                    this.worldData.setStorm(!this.worldData.hasStorm());
+                    // CraftBukkit start
+                    WeatherChangeEvent weather = new WeatherChangeEvent(this.getWorld(), !this.worldData.hasStorm());
+                    this.getServer().getPluginManager().callEvent(weather);
+
+                    if (!weather.isCancelled()) {
+                        this.worldData.setStorm(!this.worldData.hasStorm());
+                    }
+                    // CraftBukkit end
                 }
             }
 
@@ -1738,7 +1897,7 @@ public abstract class World implements IBlockAccess {
     }
 
     protected void z() {
-        this.chunkTickList.clear();
+        // this.chunkTickList.clear(); // CraftBukkit - removed
         this.methodProfiler.a("buildList");
 
         int i;
@@ -1754,14 +1913,21 @@ public abstract class World implements IBlockAccess {
 
             for (int l = -b0; l <= b0; ++l) {
                 for (int i1 = -b0; i1 <= b0; ++i1) {
-                    this.chunkTickList.add(new ChunkCoordIntPair(l + j, i1 + k));
+                    // CraftBukkit start - don't tick chunks queued for unload
+                    ChunkProviderServer chunkProviderServer = ((WorldServer) entityhuman.world).chunkProviderServer;
+                    if (chunkProviderServer.unloadQueue.contains(l + j, i1 + k)) {
+                        continue;
+                    }
+                    // CraftBukkit end
+
+                    this.chunkTickList.add(org.bukkit.craftbukkit.util.LongHash.toLong(l + j, i1 + k)); // CraftBukkit
                 }
             }
         }
 
         this.methodProfiler.b();
-        if (this.O > 0) {
-            --this.O;
+        if (this.N > 0) {
+            --this.N;
         }
 
         this.methodProfiler.a("playerCheckLight");
@@ -1780,12 +1946,12 @@ public abstract class World implements IBlockAccess {
 
     protected void a(int i, int j, Chunk chunk) {
         this.methodProfiler.c("moodSound");
-        if (this.O == 0 && !this.isStatic) {
+        if (this.N == 0 && !this.isStatic) {
             this.k = this.k * 3 + 1013904223;
             int k = this.k >> 2;
             int l = k & 15;
             int i1 = k >> 8 & 15;
-            int j1 = k >> 16 & 127;
+            int j1 = k >> 16 & 255; // CraftBukkit - 127 -> 255
             int k1 = chunk.getTypeId(l, j1, i1);
 
             l += i;
@@ -1795,7 +1961,7 @@ public abstract class World implements IBlockAccess {
 
                 if (entityhuman != null && entityhuman.e((double) l + 0.5D, (double) j1 + 0.5D, (double) i1 + 0.5D) > 4.0D) {
                     this.makeSound((double) l + 0.5D, (double) j1 + 0.5D, (double) i1 + 0.5D, "ambient.cave.cave", 0.7F, 0.8F + this.random.nextFloat() * 0.2F);
-                    this.O = this.random.nextInt(12000) + 6000;
+                    this.N = this.random.nextInt(12000) + 6000;
                 }
             }
         }
@@ -2002,16 +2168,16 @@ public abstract class World implements IBlockAccess {
             int i4;
 
             if (i2 > j1) {
-                this.I[i1++] = 133152;
+                this.H[i1++] = 133152;
             } else if (i2 < j1) {
                 if (enumskyblock != EnumSkyBlock.BLOCK) {
                     ;
                 }
 
-                this.I[i1++] = 133152 + (j1 << 18);
+                this.H[i1++] = 133152 + (j1 << 18);
 
                 while (l < i1) {
-                    k1 = this.I[l++];
+                    k1 = this.H[l++];
                     l1 = (k1 & 63) - 32 + i;
                     i2 = (k1 >> 6 & 63) - 32 + j;
                     j2 = (k1 >> 12 & 63) - 32 + k;
@@ -2049,8 +2215,8 @@ public abstract class World implements IBlockAccess {
                                         i5 = 1;
                                     }
 
-                                    if (l2 == k2 - i5 && i1 < this.I.length) {
-                                        this.I[i1++] = j4 - i + 32 + (k4 - j + 32 << 6) + (l4 - k + 32 << 12) + (k2 - i5 << 18);
+                                    if (l2 == k2 - i5 && i1 < this.H.length) {
+                                        this.H[i1++] = j4 - i + 32 + (k4 - j + 32 << 6) + (l4 - k + 32 << 12) + (k2 - i5 << 18);
                                     }
                                 }
                             }
@@ -2065,7 +2231,7 @@ public abstract class World implements IBlockAccess {
             this.methodProfiler.a("checkedPosition < toCheckCount");
 
             while (l < i1) {
-                k1 = this.I[l++];
+                k1 = this.H[l++];
                 l1 = (k1 & 63) - 32 + i;
                 i2 = (k1 >> 6 & 63) - 32 + j;
                 j2 = (k1 >> 12 & 63) - 32 + k;
@@ -2102,29 +2268,29 @@ public abstract class World implements IBlockAccess {
                             l3 = -l3;
                         }
 
-                        if (j3 + i4 + l3 < 17 && i1 < this.I.length - 6) {
+                        if (j3 + i4 + l3 < 17 && i1 < this.H.length - 6) {
                             if (this.b(enumskyblock, l1 - 1, i2, j2) < k3) {
-                                this.I[i1++] = l1 - 1 - i + 32 + (i2 - j + 32 << 6) + (j2 - k + 32 << 12);
+                                this.H[i1++] = l1 - 1 - i + 32 + (i2 - j + 32 << 6) + (j2 - k + 32 << 12);
                             }
 
                             if (this.b(enumskyblock, l1 + 1, i2, j2) < k3) {
-                                this.I[i1++] = l1 + 1 - i + 32 + (i2 - j + 32 << 6) + (j2 - k + 32 << 12);
+                                this.H[i1++] = l1 + 1 - i + 32 + (i2 - j + 32 << 6) + (j2 - k + 32 << 12);
                             }
 
                             if (this.b(enumskyblock, l1, i2 - 1, j2) < k3) {
-                                this.I[i1++] = l1 - i + 32 + (i2 - 1 - j + 32 << 6) + (j2 - k + 32 << 12);
+                                this.H[i1++] = l1 - i + 32 + (i2 - 1 - j + 32 << 6) + (j2 - k + 32 << 12);
                             }
 
                             if (this.b(enumskyblock, l1, i2 + 1, j2) < k3) {
-                                this.I[i1++] = l1 - i + 32 + (i2 + 1 - j + 32 << 6) + (j2 - k + 32 << 12);
+                                this.H[i1++] = l1 - i + 32 + (i2 + 1 - j + 32 << 6) + (j2 - k + 32 << 12);
                             }
 
                             if (this.b(enumskyblock, l1, i2, j2 - 1) < k3) {
-                                this.I[i1++] = l1 - i + 32 + (i2 - j + 32 << 6) + (j2 - 1 - k + 32 << 12);
+                                this.H[i1++] = l1 - i + 32 + (i2 - j + 32 << 6) + (j2 - 1 - k + 32 << 12);
                             }
 
                             if (this.b(enumskyblock, l1, i2, j2 + 1) < k3) {
-                                this.I[i1++] = l1 - i + 32 + (i2 - j + 32 << 6) + (j2 + 1 - k + 32 << 12);
+                                this.H[i1++] = l1 - i + 32 + (i2 - j + 32 << 6) + (j2 + 1 - k + 32 << 12);
                             }
                         }
                     }
@@ -2144,7 +2310,7 @@ public abstract class World implements IBlockAccess {
     }
 
     public List getEntities(Entity entity, AxisAlignedBB axisalignedbb) {
-        this.P.clear();
+        this.O.clear();
         int i = MathHelper.floor((axisalignedbb.a - 2.0D) / 16.0D);
         int j = MathHelper.floor((axisalignedbb.d + 2.0D) / 16.0D);
         int k = MathHelper.floor((axisalignedbb.c - 2.0D) / 16.0D);
@@ -2153,12 +2319,12 @@ public abstract class World implements IBlockAccess {
         for (int i1 = i; i1 <= j; ++i1) {
             for (int j1 = k; j1 <= l; ++j1) {
                 if (this.isChunkLoaded(i1, j1)) {
-                    this.getChunkAt(i1, j1).a(entity, axisalignedbb, this.P);
+                    this.getChunkAt(i1, j1).a(entity, axisalignedbb, this.O);
                 }
             }
         }
 
-        return this.P;
+        return this.O;
     }
 
     public List a(Class oclass, AxisAlignedBB axisalignedbb) {
@@ -2227,9 +2393,15 @@ public abstract class World implements IBlockAccess {
     }
 
     public void a(List list) {
-        this.entityList.addAll(list);
-
+        // CraftBukkit start
+        Entity entity = null;
         for (int i = 0; i < list.size(); ++i) {
+            entity = (Entity) list.get(i);
+            if (entity == null) {
+                continue;
+            }
+            this.entityList.add(entity);
+            // CraftBukkit end
             this.a((Entity) list.get(i));
         }
     }
@@ -2248,15 +2420,25 @@ public abstract class World implements IBlockAccess {
             axisalignedbb = null;
         }
 
+        boolean defaultReturn; // CraftBukkit - store the default action
+
         if (axisalignedbb != null && !this.a(axisalignedbb, entity)) {
-            return false;
+            defaultReturn = false; // CraftBukkit
         } else {
             if (block != null && (block == Block.WATER || block == Block.STATIONARY_WATER || block == Block.LAVA || block == Block.STATIONARY_LAVA || block == Block.FIRE || block.material.isReplaceable())) {
                 block = null;
             }
 
-            return block != null && block.material == Material.ORIENTABLE && block1 == Block.ANVIL ? true : i > 0 && block == null && block1.canPlace(this, j, k, l, i1);
+            // CraftBukkit
+            defaultReturn = block != null && block.material == Material.ORIENTABLE && block1 == Block.ANVIL ? true : i > 0 && block == null && block1.canPlace(this, j, k, l, i1);
         }
+
+        // CraftBukkit start
+        BlockCanBuildEvent event = new BlockCanBuildEvent(this.getWorld().getBlockAt(j, k, l), i, defaultReturn);
+        this.getServer().getPluginManager().callEvent(event);
+
+        return event.isBuildable();
+        // CraftBukkit end
     }
 
     public PathEntity findPath(Entity entity, Entity entity1, float f, boolean flag, boolean flag1, boolean flag2, boolean flag3) {
@@ -2331,6 +2513,11 @@ public abstract class World implements IBlockAccess {
 
         for (int i = 0; i < this.players.size(); ++i) {
             EntityHuman entityhuman1 = (EntityHuman) this.players.get(i);
+            // CraftBukkit start - fixed an NPE
+            if (entityhuman1 == null || entityhuman1.dead) {
+                continue;
+            }
+            // CraftBukkit end
             double d5 = entityhuman1.e(d0, d1, d2);
 
             if ((d3 < 0.0D || d5 < d3 * d3) && (d4 == -1.0D || d5 < d4)) {
@@ -2352,8 +2539,13 @@ public abstract class World implements IBlockAccess {
 
         for (int i = 0; i < this.players.size(); ++i) {
             EntityHuman entityhuman1 = (EntityHuman) this.players.get(i);
+            // CraftBukkit start - fixed an NPE
+            if (entityhuman1 == null || entityhuman1.dead) {
+                continue;
+            }
+            // CraftBukkit end
 
-            if (!entityhuman1.abilities.isInvulnerable) {
+            if (!entityhuman1.abilities.isInvulnerable && entityhuman1.isAlive()) {
                 double d5 = entityhuman1.e(d0, d1, d2);
                 double d6 = d3;
 
@@ -2362,7 +2554,7 @@ public abstract class World implements IBlockAccess {
                 }
 
                 if (entityhuman1.isInvisible()) {
-                    float f = entityhuman1.bS();
+                    float f = entityhuman1.bR();
 
                     if (f < 0.1F) {
                         f = 0.1F;
@@ -2391,7 +2583,7 @@ public abstract class World implements IBlockAccess {
         return null;
     }
 
-    public void D() {
+    public void D() throws ExceptionWorldConflict { // CraftBukkit - added throws
         this.dataManager.checkSession();
     }
 
@@ -2445,6 +2637,16 @@ public abstract class World implements IBlockAccess {
 
     public void everyoneSleeping() {}
 
+    // CraftBukkit start
+    // Calls the method that checks to see if players are sleeping
+    // Called by CraftPlayer.setPermanentSleeping()
+    public void checkSleepStatus() {
+        if (!this.isStatic) {
+            this.everyoneSleeping();
+        }
+    }
+    // CraftBukkit end
+
     public float i(float f) {
         return (this.o + (this.p - this.o) * f) * this.j(f);
     }
@@ -2494,8 +2696,8 @@ public abstract class World implements IBlockAccess {
     }
 
     public void e(int i, int j, int k, int l, int i1) {
-        for (int j1 = 0; j1 < this.w.size(); ++j1) {
-            ((IWorldAccess) this.w.get(j1)).a(i, j, k, l, i1);
+        for (int j1 = 0; j1 < this.v.size(); ++j1) {
+            ((IWorldAccess) this.v.get(j1)).a(i, j, k, l, i1);
         }
     }
 
@@ -2504,8 +2706,19 @@ public abstract class World implements IBlockAccess {
     }
 
     public void a(EntityHuman entityhuman, int i, int j, int k, int l, int i1) {
-        for (int j1 = 0; j1 < this.w.size(); ++j1) {
-            ((IWorldAccess) this.w.get(j1)).a(entityhuman, i, j, k, l, i1);
+        try {
+            for (int j1 = 0; j1 < this.v.size(); ++j1) {
+                ((IWorldAccess) this.v.get(j1)).a(entityhuman, i, j, k, l, i1);
+            }
+        } catch (Throwable throwable) {
+            CrashReport crashreport = CrashReport.a(throwable, "Playing level event");
+            CrashReportSystemDetails crashreportsystemdetails = crashreport.a("Level event being played");
+
+            crashreportsystemdetails.a("Block coordinates", CrashReportSystemDetails.a(j, k, l));
+            crashreportsystemdetails.a("Event source", entityhuman);
+            crashreportsystemdetails.a("Event type", Integer.valueOf(i));
+            crashreportsystemdetails.a("Event data", Integer.valueOf(i1));
+            throw new ReportedException(crashreport);
         }
     }
 
@@ -2549,22 +2762,22 @@ public abstract class World implements IBlockAccess {
     }
 
     public void g(int i, int j, int k, int l, int i1) {
-        for (int j1 = 0; j1 < this.w.size(); ++j1) {
-            IWorldAccess iworldaccess = (IWorldAccess) this.w.get(j1);
+        for (int j1 = 0; j1 < this.v.size(); ++j1) {
+            IWorldAccess iworldaccess = (IWorldAccess) this.v.get(j1);
 
             iworldaccess.b(i, j, k, l, i1);
         }
     }
 
     public Vec3DPool getVec3DPool() {
-        return this.K;
+        return this.J;
     }
 
     public Calendar T() {
         if (this.getTime() % 600L == 0L) {
-            this.L.setTimeInMillis(System.currentTimeMillis());
+            this.K.setTimeInMillis(System.currentTimeMillis());
         }
 
-        return this.L;
+        return this.K;
     }
 }

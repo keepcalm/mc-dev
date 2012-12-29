@@ -1,5 +1,7 @@
 package net.minecraft.server;
 
+import org.bukkit.craftbukkit.event.CraftEventFactory; // CraftBukkit
+
 public class EntityPig extends EntityAnimal {
 
     private final PathfinderGoalPassengerCarrotStick d;
@@ -88,19 +90,24 @@ public class EntityPig extends EntityAnimal {
     }
 
     protected void dropDeathLoot(boolean flag, int i) {
+        // CraftBukkit start
+        java.util.List<org.bukkit.inventory.ItemStack> loot = new java.util.ArrayList<org.bukkit.inventory.ItemStack>();
         int j = this.random.nextInt(3) + 1 + this.random.nextInt(1 + i);
 
-        for (int k = 0; k < j; ++k) {
+        if (j > 0) {
             if (this.isBurning()) {
-                this.b(Item.GRILLED_PORK.id, 1);
+                loot.add(new org.bukkit.inventory.ItemStack(Item.GRILLED_PORK.id, j));
             } else {
-                this.b(Item.PORK.id, 1);
+                loot.add(new org.bukkit.inventory.ItemStack(Item.PORK.id, j));
             }
         }
 
         if (this.hasSaddle()) {
-            this.b(Item.SADDLE.id, 1);
+            loot.add(new org.bukkit.inventory.ItemStack(Item.SADDLE.id, 1));
         }
+
+        CraftEventFactory.callEntityDeathEvent(this, loot);
+        // CraftBukkit end
     }
 
     public boolean hasSaddle() {
@@ -119,8 +126,15 @@ public class EntityPig extends EntityAnimal {
         if (!this.world.isStatic) {
             EntityPigZombie entitypigzombie = new EntityPigZombie(this.world);
 
+            // CraftBukkit start
+            if (CraftEventFactory.callPigZapEvent(this, entitylightning, entitypigzombie).isCancelled()) {
+                return;
+            }
+            // CraftBukkit end
+
             entitypigzombie.setPositionRotation(this.locX, this.locY, this.locZ, this.yaw, this.pitch);
-            this.world.addEntity(entitypigzombie);
+            // CraftBukkit - added a reason for spawning this creature
+            this.world.addEntity(entitypigzombie, org.bukkit.event.entity.CreatureSpawnEvent.SpawnReason.LIGHTNING);
             this.die();
         }
     }

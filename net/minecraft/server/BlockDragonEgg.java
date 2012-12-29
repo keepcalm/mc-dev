@@ -2,10 +2,13 @@ package net.minecraft.server;
 
 import java.util.Random;
 
+import org.bukkit.event.block.BlockFromToEvent; // CraftBukkit
+
 public class BlockDragonEgg extends Block {
 
     public BlockDragonEgg(int i, int j) {
         super(i, j, Material.DRAGON_EGG);
+        this.a(0.0625F, 0.0F, 0.0625F, 0.9375F, 1.0F, 0.9375F);
     }
 
     public void onPlace(World world, int i, int j, int k) {
@@ -25,7 +28,8 @@ public class BlockDragonEgg extends Block {
             byte b0 = 32;
 
             if (!BlockSand.instaFall && world.d(i - b0, j - b0, k - b0, i + b0, j + b0, k + b0)) {
-                EntityFallingBlock entityfallingblock = new EntityFallingBlock(world, (double) ((float) i + 0.5F), (double) ((float) j + 0.5F), (double) ((float) k + 0.5F), this.id);
+                // CraftBukkit - added data
+                EntityFallingBlock entityfallingblock = new EntityFallingBlock(world, (double) ((float) i + 0.5F), (double) ((float) j + 0.5F), (double) ((float) k + 0.5F), this.id, world.getData(i, j, k));
 
                 world.addEntity(entityfallingblock);
             } else {
@@ -59,6 +63,21 @@ public class BlockDragonEgg extends Block {
                 int k1 = k + world.random.nextInt(16) - world.random.nextInt(16);
 
                 if (world.getTypeId(i1, j1, k1) == 0) {
+                    // CraftBukkit start
+                    org.bukkit.block.Block from = world.getWorld().getBlockAt(i, j, k);
+                    org.bukkit.block.Block to = world.getWorld().getBlockAt(i1, j1, k1);
+                    BlockFromToEvent event = new BlockFromToEvent(from, to);
+                    org.bukkit.Bukkit.getPluginManager().callEvent(event);
+
+                    if (event.isCancelled()) {
+                        return;
+                    }
+
+                    i1 = event.getToBlock().getX();
+                    j1 = event.getToBlock().getY();
+                    k1 = event.getToBlock().getZ();
+                    // CraftBukkit end
+
                     if (!world.isStatic) {
                         world.setTypeIdAndData(i1, j1, k1, this.id, world.getData(i, j, k));
                         world.setTypeId(i, j, k, 0);

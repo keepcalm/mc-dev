@@ -17,7 +17,17 @@ public class Packet56MapChunkBulk extends Packet {
     private byte[] buffer;
     private byte[][] inflatedBuffers;
     private int size;
-    private static byte[] buildBuffer = new byte[0];
+    private boolean h;
+    private byte[] buildBuffer = new byte[0]; // CraftBukkit - remove static
+    // CraftBukkit start
+    static final ThreadLocal<Deflater> localDeflater = new ThreadLocal<Deflater>() {
+        @Override
+        protected Deflater initialValue() {
+            // Don't use higher compression level, slows things down too much
+            return new Deflater(6);
+        }
+    };
+    // CraftBukkit end
 
     public Packet56MapChunkBulk() {}
 
@@ -29,6 +39,7 @@ public class Packet56MapChunkBulk extends Packet {
         this.a = new int[i];
         this.b = new int[i];
         this.inflatedBuffers = new byte[i][];
+        this.h = !list.isEmpty() && !((Chunk) list.get(0)).world.worldProvider.f;
         int j = 0;
 
         for (int k = 0; k < i; ++k) {
@@ -51,6 +62,7 @@ public class Packet56MapChunkBulk extends Packet {
             this.inflatedBuffers[k] = chunkmap.a;
         }
 
+        /* CraftBukkit start - moved to compress()
         Deflater deflater = new Deflater(-1);
 
         try {
@@ -61,12 +73,30 @@ public class Packet56MapChunkBulk extends Packet {
         } finally {
             deflater.end();
         }
+        */
     }
 
-    public void a(DataInputStream datainputstream) {
+    // Add compression method
+    public void compress() {
+        if (this.buffer != null) {
+            return;
+        }
+
+        Deflater deflater = localDeflater.get();
+        deflater.reset();
+        deflater.setInput(this.buildBuffer);
+        deflater.finish();
+
+        this.buffer = new byte[this.buildBuffer.length + 100];
+        this.size = deflater.deflate(this.buffer);
+    }
+    // CraftBukkit end
+
+    public void a(DataInputStream datainputstream) throws IOException { // CraftBukkit - throws IOException
         short short1 = datainputstream.readShort();
 
         this.size = datainputstream.readInt();
+        this.h = datainputstream.readBoolean();
         this.c = new int[short1];
         this.d = new int[short1];
         this.a = new int[short1];
@@ -98,23 +128,32 @@ public class Packet56MapChunkBulk extends Packet {
             this.a[j] = datainputstream.readShort();
             this.b[j] = datainputstream.readShort();
             int k = 0;
+            int l = 0;
 
-            int l;
+            int i1;
 
-            for (l = 0; l < 16; ++l) {
-                k += this.a[j] >> l & 1;
+            for (i1 = 0; i1 < 16; ++i1) {
+                k += this.a[j] >> i1 & 1;
+                l += this.b[j] >> i1 & 1;
             }
 
-            l = 2048 * 5 * k + 256;
-            this.inflatedBuffers[j] = new byte[l];
-            System.arraycopy(abyte, i, this.inflatedBuffers[j], 0, l);
-            i += l;
+            i1 = 2048 * 4 * k + 256;
+            i1 += 2048 * l;
+            if (this.h) {
+                i1 += 2048 * k;
+            }
+
+            this.inflatedBuffers[j] = new byte[i1];
+            System.arraycopy(abyte, i, this.inflatedBuffers[j], 0, i1);
+            i += i1;
         }
     }
 
-    public void a(DataOutputStream dataoutputstream) {
+    public void a(DataOutputStream dataoutputstream) throws IOException { // CraftBukkit - throws IOException
+        compress(); // CraftBukkit
         dataoutputstream.writeShort(this.c.length);
         dataoutputstream.writeInt(this.size);
+        dataoutputstream.writeBoolean(this.h);
         dataoutputstream.write(this.buffer, 0, this.size);
 
         for (int i = 0; i < this.c.length; ++i) {
@@ -125,8 +164,8 @@ public class Packet56MapChunkBulk extends Packet {
         }
     }
 
-    public void handle(NetHandler nethandler) {
-        nethandler.a(this);
+    public void handle(Connection connection) {
+        connection.a(this);
     }
 
     public int a() {

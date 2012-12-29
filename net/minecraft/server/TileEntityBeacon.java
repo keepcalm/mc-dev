@@ -3,6 +3,13 @@ package net.minecraft.server;
 import java.util.Iterator;
 import java.util.List;
 
+// CraftBukkit start
+import java.util.List;
+
+import org.bukkit.craftbukkit.entity.CraftHumanEntity;
+import org.bukkit.entity.HumanEntity;
+// CraftBukkit end
+
 public class TileEntityBeacon extends TileEntity implements IInventory {
 
     public static final MobEffectList[][] a = new MobEffectList[][] { { MobEffectList.FASTER_MOVEMENT, MobEffectList.FASTER_DIG}, { MobEffectList.RESISTANCE, MobEffectList.JUMP}, { MobEffectList.INCREASE_DAMAGE}, { MobEffectList.REGENERATION}};
@@ -11,6 +18,30 @@ public class TileEntityBeacon extends TileEntity implements IInventory {
     private int f;
     private int g;
     private ItemStack h;
+    // CraftBukkit start
+    public List<HumanEntity> transaction = new java.util.ArrayList<HumanEntity>();
+    private int maxStack = MAX_STACK;
+
+    public ItemStack[] getContents() {
+        return null;
+    }
+
+    public void onOpen(CraftHumanEntity who) {
+        transaction.add(who);
+    }
+
+    public void onClose(CraftHumanEntity who) {
+        transaction.remove(who);
+    }
+
+    public List<HumanEntity> getViewers() {
+        return transaction;
+    }
+
+    public void setMaxStackSize(int size) {
+        maxStack = size;
+    }
+    // CraftBukkit end
 
     public TileEntityBeacon() {}
 
@@ -207,7 +238,7 @@ public class TileEntityBeacon extends TileEntity implements IInventory {
     }
 
     public int getMaxStackSize() {
-        return 1;
+        return maxStack; // CraftBukkit
     }
 
     public boolean a_(EntityHuman entityhuman) {

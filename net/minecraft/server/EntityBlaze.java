@@ -10,7 +10,7 @@ public class EntityBlaze extends EntityMonster {
         super(world);
         this.texture = "/mob/fire.png";
         this.fireProof = true;
-        this.bc = 10;
+        this.bd = 10;
     }
 
     public int getMaxHealth() {
@@ -123,11 +123,16 @@ public class EntityBlaze extends EntityMonster {
 
     protected void dropDeathLoot(boolean flag, int i) {
         if (flag) {
+            // CraftBukkit start
+            java.util.List<org.bukkit.inventory.ItemStack> loot = new java.util.ArrayList<org.bukkit.inventory.ItemStack>();
             int j = this.random.nextInt(2 + i);
 
-            for (int k = 0; k < j; ++k) {
-                this.b(Item.BLAZE_ROD.id, 1);
+            if (j > 0) {
+                loot.add(new org.bukkit.inventory.ItemStack(Item.BLAZE_ROD.id, j));
             }
+
+            org.bukkit.craftbukkit.event.CraftEventFactory.callEntityDeathEvent(this, loot);
+            // CraftBukkit end
         }
     }
 

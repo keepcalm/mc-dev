@@ -7,11 +7,19 @@ import java.util.logging.Formatter;
 import java.util.logging.Level;
 import java.util.logging.LogRecord;
 
+import java.util.regex.Pattern; // CraftBukkit
+
 final class ConsoleLogFormatter extends Formatter {
 
     private SimpleDateFormat a = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
+    // CraftBukkit start - add color stripping, change constructor to take it
+    private Pattern pattern = Pattern.compile("\\x1B\\[([0-9]{1,2}(;[0-9]{1,2})?)?[m|K]");
+    private boolean strip = false;
 
-    ConsoleLogFormatter() {}
+    ConsoleLogFormatter(boolean strip) {
+        this.strip = strip;
+    }
+    // CraftBukkit end
 
     public String format(LogRecord logrecord) {
         StringBuilder stringbuilder = new StringBuilder();
@@ -31,11 +39,11 @@ final class ConsoleLogFormatter extends Formatter {
             stringbuilder.append(" [WARNING] ");
         } else if (level == Level.SEVERE) {
             stringbuilder.append(" [SEVERE] ");
-        } else if (level == Level.SEVERE) {
+        } else { // CraftBukkit
             stringbuilder.append(" [").append(level.getLocalizedName()).append("] ");
         }
 
-        stringbuilder.append(logrecord.getMessage());
+        stringbuilder.append(formatMessage(logrecord)); // CraftBukkit
         stringbuilder.append('\n');
         Throwable throwable = logrecord.getThrown();
 
@@ -46,6 +54,12 @@ final class ConsoleLogFormatter extends Formatter {
             stringbuilder.append(stringwriter.toString());
         }
 
-        return stringbuilder.toString();
+        // CraftBukkit start - handle stripping color
+        if (this.strip) {
+            return this.pattern.matcher(stringbuilder.toString()).replaceAll("");
+        } else {
+            return stringbuilder.toString();
+        }
+        // CraftBukkit end
     }
 }

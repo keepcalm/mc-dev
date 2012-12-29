@@ -1,5 +1,7 @@
 package net.minecraft.server;
 
+import org.bukkit.craftbukkit.block.CraftBlockState; // CraftBukkit
+
 public class ItemSign extends Item {
 
     public ItemSign(int i) {
@@ -14,6 +16,8 @@ public class ItemSign extends Item {
         } else if (!world.getMaterial(i, j, k).isBuildable()) {
             return false;
         } else {
+            int clickedX = i, clickedY = j, clickedZ = k; // CraftBukkit
+
             if (l == 1) {
                 ++j;
             }
@@ -39,13 +43,30 @@ public class ItemSign extends Item {
             } else if (!Block.SIGN_POST.canPlace(world, i, j, k)) {
                 return false;
             } else {
+                CraftBlockState blockState = CraftBlockState.getBlockState(world, i, j, k); // CraftBukkit
+
                 if (l == 1) {
                     int i1 = MathHelper.floor((double) ((entityhuman.yaw + 180.0F) * 16.0F / 360.0F) + 0.5D) & 15;
 
-                    world.setTypeIdAndData(i, j, k, Block.SIGN_POST.id, i1);
+                    // CraftBukkit start - sign
+                    world.setRawTypeIdAndData(i, j, k, Block.SIGN_POST.id, i1);
                 } else {
-                    world.setTypeIdAndData(i, j, k, Block.WALL_SIGN.id, l);
+                    world.setRawTypeIdAndData(i, j, k, Block.WALL_SIGN.id, l);
                 }
+
+                org.bukkit.event.block.BlockPlaceEvent event = org.bukkit.craftbukkit.event.CraftEventFactory.callBlockPlaceEvent(world, entityhuman, blockState, clickedX, clickedY, clickedZ);
+
+                if (event.isCancelled() || !event.canBuild()) {
+                    event.getBlockPlaced().setTypeIdAndData(blockState.getTypeId(), blockState.getRawData(), false);
+                    return false;
+                } else {
+                    if (l == 1) {
+                        world.update(i, j, k, Block.SIGN_POST.id);
+                    } else {
+                        world.update(i, j, k, Block.WALL_SIGN.id);
+                    }
+                }
+                // CraftBukkit end
 
                 --itemstack.count;
                 TileEntitySign tileentitysign = (TileEntitySign) world.getTileEntity(i, j, k);

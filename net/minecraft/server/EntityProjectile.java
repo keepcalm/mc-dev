@@ -2,6 +2,8 @@ package net.minecraft.server;
 
 import java.util.List;
 
+import org.bukkit.event.entity.ProjectileHitEvent; // CraftBukkit
+
 public abstract class EntityProjectile extends Entity implements IProjectile {
 
     private int blockX = -1;
@@ -10,8 +12,8 @@ public abstract class EntityProjectile extends Entity implements IProjectile {
     private int inBlockId = 0;
     protected boolean inGround = false;
     public int shake = 0;
-    private EntityLiving shooter;
-    private String shooterName = null;
+    public EntityLiving shooter; // CraftBukkit - private -> public
+    public String shooterName = null; // CraftBukkit - private -> public
     private int i;
     private int j = 0;
 
@@ -134,7 +136,7 @@ public abstract class EntityProjectile extends Entity implements IProjectile {
                     MovingObjectPosition movingobjectposition1 = axisalignedbb.a(vec3d, vec3d1);
 
                     if (movingobjectposition1 != null) {
-                        double d1 = vec3d.d(movingobjectposition1.pos);
+                        double d1 = vec3d.distanceSquared(movingobjectposition1.pos); // CraftBukkit - distance efficiency
 
                         if (d1 < d0 || d0 == 0.0D) {
                             entity = entity1;
@@ -154,6 +156,12 @@ public abstract class EntityProjectile extends Entity implements IProjectile {
                 this.aa();
             } else {
                 this.a(movingobjectposition);
+                // CraftBukkit start
+                if (this.dead) {
+                    ProjectileHitEvent hitEvent = new ProjectileHitEvent((org.bukkit.entity.Projectile) this.getBukkitEntity());
+                    org.bukkit.Bukkit.getPluginManager().callEvent(hitEvent);
+                }
+                // CraftBukkit end
             }
         }
 

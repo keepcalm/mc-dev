@@ -1,5 +1,10 @@
 package net.minecraft.server;
 
+// CraftBukkit start
+import org.bukkit.craftbukkit.inventory.CraftItemStack;
+import org.bukkit.event.block.BlockDispenseEvent;
+// CraftBukkit end
+
 public class DispenseBehaviorEmptyBucket extends DispenseBehaviorItem {
 
     private final DispenseBehaviorItem c;
@@ -30,6 +35,30 @@ public class DispenseBehaviorEmptyBucket extends DispenseBehaviorItem {
 
             item = Item.LAVA_BUCKET;
         }
+
+        // CraftBukkit start
+        org.bukkit.block.Block block = world.getWorld().getBlockAt(i, j, k);
+        CraftItemStack craftItem = CraftItemStack.asCraftMirror(itemstack);
+
+        BlockDispenseEvent event = new BlockDispenseEvent(block, craftItem.clone(), new org.bukkit.util.Vector(0, 0, 0));
+        if (!BlockDispenser.eventFired) {
+            world.getServer().getPluginManager().callEvent(event);
+        }
+
+        if (event.isCancelled()) {
+            return itemstack;
+        }
+
+        if (!event.getItem().equals(craftItem)) {
+            // Chain to handler for new item
+            ItemStack eventStack = CraftItemStack.asNMSCopy(event.getItem());
+            IDispenseBehavior idispensebehavior = (IDispenseBehavior) BlockDispenser.a.a(eventStack.getItem());
+            if (idispensebehavior != IDispenseBehavior.a && idispensebehavior != this) {
+                idispensebehavior.a(isourceblock, eventStack);
+                return itemstack;
+            }
+        }
+        // CraftBukkit end
 
         world.setTypeId(i, j, k, 0);
         if (--itemstack.count == 0) {

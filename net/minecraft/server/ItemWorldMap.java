@@ -1,5 +1,10 @@
 package net.minecraft.server;
 
+// CraftBukkit start
+import org.bukkit.Bukkit;
+import org.bukkit.event.server.MapInitializeEvent;
+// CraftBukkit end
+
 public class ItemWorldMap extends ItemWorldMapBase {
 
     protected ItemWorldMap(int i) {
@@ -20,16 +25,22 @@ public class ItemWorldMap extends ItemWorldMapBase {
 
             worldmap.centerX = Math.round((float) world.getWorldData().c() / (float) i) * i;
             worldmap.centerZ = Math.round((float) (world.getWorldData().e() / i)) * i;
-            worldmap.map = (byte) world.worldProvider.dimension;
+            worldmap.map = (byte) ((WorldServer) world).dimension; // CraftBukkit - fixes Bukkit multiworld maps
             worldmap.c();
             world.a(s, (WorldMapBase) worldmap);
+
+            // CraftBukkit start
+            MapInitializeEvent event = new MapInitializeEvent(worldmap.mapView);
+            Bukkit.getServer().getPluginManager().callEvent(event);
+            // CraftBukkit end
         }
 
         return worldmap;
     }
 
     public void a(World world, Entity entity, WorldMap worldmap) {
-        if (world.worldProvider.dimension == worldmap.map && entity instanceof EntityHuman) {
+        // CraftBukkit
+        if (((WorldServer) world).dimension == worldmap.map && entity instanceof EntityHuman) {
             short short1 = 128;
             short short2 = 128;
             int i = 1 << worldmap.scale;
@@ -239,6 +250,11 @@ public class ItemWorldMap extends ItemWorldMapBase {
             worldmap1.map = worldmap.map;
             worldmap1.c();
             world.a("map_" + itemstack.getData(), (WorldMapBase) worldmap1);
+
+            // CraftBukkit start
+            MapInitializeEvent event = new MapInitializeEvent(worldmap1.mapView);
+            Bukkit.getServer().getPluginManager().callEvent(event);
+            // CraftBukkit end
         }
     }
 }

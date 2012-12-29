@@ -2,6 +2,11 @@ package net.minecraft.server;
 
 import java.util.Random;
 
+// CraftBukkit start
+import org.bukkit.event.entity.SheepRegrowWoolEvent;
+import org.bukkit.event.player.PlayerShearEntityEvent;
+// CraftBukkit end
+
 public class EntitySheep extends EntityAnimal {
 
     private final InventoryCrafting e = new InventoryCrafting(new ContainerSheepBreed(this), 2, 1);
@@ -27,6 +32,7 @@ public class EntitySheep extends EntityAnimal {
         this.goalSelector.a(8, new PathfinderGoalRandomLookaround(this));
         this.e.setItem(0, new ItemStack(Item.INK_SACK, 1, 0));
         this.e.setItem(1, new ItemStack(Item.INK_SACK, 1, 0));
+        this.e.resultInventory = new InventoryCraftResult(); // CraftBukkit - add result slot for event
     }
 
     protected boolean be() {
@@ -56,9 +62,15 @@ public class EntitySheep extends EntityAnimal {
     }
 
     protected void dropDeathLoot(boolean flag, int i) {
+        // CraftBukkit start - whole method
+        java.util.List<org.bukkit.inventory.ItemStack> loot = new java.util.ArrayList<org.bukkit.inventory.ItemStack>();
+
         if (!this.isSheared()) {
-            this.a(new ItemStack(Block.WOOL.id, 1, this.getColor()), 0.0F);
+            loot.add(new org.bukkit.inventory.ItemStack(org.bukkit.Material.WOOL, 1, (short) 0, (byte) this.getColor()));
         }
+
+        org.bukkit.craftbukkit.event.CraftEventFactory.callEntityDeathEvent(this, loot);
+        // CraftBukkit end
     }
 
     protected int getLootId() {
@@ -70,6 +82,15 @@ public class EntitySheep extends EntityAnimal {
 
         if (itemstack != null && itemstack.id == Item.SHEARS.id && !this.isSheared() && !this.isBaby()) {
             if (!this.world.isStatic) {
+                // CraftBukkit start
+                PlayerShearEntityEvent event = new PlayerShearEntityEvent((org.bukkit.entity.Player) entityhuman.getBukkitEntity(), this.getBukkitEntity());
+                this.world.getServer().getPluginManager().callEvent(event);
+
+                if (event.isCancelled()) {
+                    return false;
+                }
+                // CraftBukkit end
+
                 this.setSheared(true);
                 int i = 1 + this.random.nextInt(3);
 
@@ -157,7 +178,15 @@ public class EntitySheep extends EntityAnimal {
     }
 
     public void aH() {
-        this.setSheared(false);
+        // CraftBukkit start
+        SheepRegrowWoolEvent event = new SheepRegrowWoolEvent((org.bukkit.entity.Sheep) this.getBukkitEntity());
+        this.world.getServer().getPluginManager().callEvent(event);
+
+        if (!event.isCancelled()) {
+            this.setSheared(false);
+        }
+        // CraftBukkit end
+
         if (this.isBaby()) {
             int i = this.getAge() + 1200;
 

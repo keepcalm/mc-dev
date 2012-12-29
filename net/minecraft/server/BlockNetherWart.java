@@ -25,8 +25,7 @@ public class BlockNetherWart extends BlockFlower {
         int l = world.getData(i, j, k);
 
         if (l < 3 && random.nextInt(10) == 0) {
-            ++l;
-            world.setData(i, j, k, l);
+            org.bukkit.craftbukkit.event.CraftEventFactory.handleBlockGrowEvent(world, i, j, k, this.id, ++l); // CraftBukkit
         }
 
         super.b(world, i, j, k, random);

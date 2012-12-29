@@ -1,5 +1,11 @@
 package net.minecraft.server;
 
+// CraftBukkit start
+import org.bukkit.craftbukkit.entity.CraftEntity;
+import org.bukkit.craftbukkit.inventory.CraftItemStack;
+import org.bukkit.event.entity.EntityTargetEvent;
+// CraftBukkit end
+
 public class EntityGhast extends EntityFlying implements IMonster {
 
     public int b = 0;
@@ -10,13 +16,14 @@ public class EntityGhast extends EntityFlying implements IMonster {
     private int i = 0;
     public int f = 0;
     public int g = 0;
+    private int explosionPower = 1;
 
     public EntityGhast(World world) {
         super(world);
         this.texture = "/mob/ghast.png";
         this.a(4.0F, 4.0F);
         this.fireProof = true;
-        this.bc = 5;
+        this.bd = 5;
     }
 
     public boolean damageEntity(DamageSource damagesource, int i) {
@@ -80,11 +87,37 @@ public class EntityGhast extends EntityFlying implements IMonster {
         }
 
         if (this.target != null && this.target.dead) {
-            this.target = null;
+            // CraftBukkit start
+            EntityTargetEvent event = new EntityTargetEvent(this.getBukkitEntity(), null, EntityTargetEvent.TargetReason.TARGET_DIED);
+            this.world.getServer().getPluginManager().callEvent(event);
+
+            if (!event.isCancelled()) {
+                if (event.getTarget() == null) {
+                    this.target = null;
+                } else {
+                    this.target = ((CraftEntity) event.getTarget()).getHandle();
+                }
+            }
+            // CraftBukkit end
         }
 
         if (this.target == null || this.i-- <= 0) {
-            this.target = this.world.findNearbyVulnerablePlayer(this, 100.0D);
+            // CraftBukkit start
+            Entity target = this.world.findNearbyVulnerablePlayer(this, 100.0D);
+            if (target != null) {
+                EntityTargetEvent event = new EntityTargetEvent(this.getBukkitEntity(), target.getBukkitEntity(), EntityTargetEvent.TargetReason.CLOSEST_PLAYER);
+                this.world.getServer().getPluginManager().callEvent(event);
+
+                if (!event.isCancelled()) {
+                    if (event.getTarget() == null) {
+                        this.target = null;
+                    } else {
+                        this.target = ((CraftEntity) event.getTarget()).getHandle();
+                    }
+                }
+            }
+            // CraftBukkit end
+
             if (this.target != null) {
                 this.i = 20;
             }
@@ -97,7 +130,7 @@ public class EntityGhast extends EntityFlying implements IMonster {
             double d6 = this.target.boundingBox.b + (double) (this.target.length / 2.0F) - (this.locY + (double) (this.length / 2.0F));
             double d7 = this.target.locZ - this.locZ;
 
-            this.aw = this.yaw = -((float) Math.atan2(d5, d7)) * 180.0F / 3.1415927F;
+            this.ax = this.yaw = -((float) Math.atan2(d5, d7)) * 180.0F / 3.1415927F;
             if (this.n(this.target)) {
                 if (this.g == 10) {
                     this.world.a((EntityHuman) null, 1007, (int) this.locX, (int) this.locY, (int) this.locZ, 0);
@@ -107,6 +140,8 @@ public class EntityGhast extends EntityFlying implements IMonster {
                 if (this.g == 20) {
                     this.world.a((EntityHuman) null, 1008, (int) this.locX, (int) this.locY, (int) this.locZ, 0);
                     EntityLargeFireball entitylargefireball = new EntityLargeFireball(this.world, this, d5, d6, d7);
+
+                    entitylargefireball.e = this.explosionPower;
                     double d8 = 4.0D;
                     Vec3D vec3d = this.i(1.0F);
 
@@ -120,7 +155,7 @@ public class EntityGhast extends EntityFlying implements IMonster {
                 --this.g;
             }
         } else {
-            this.aw = this.yaw = -((float) Math.atan2(this.motX, this.motZ)) * 180.0F / 3.1415927F;
+            this.ax = this.yaw = -((float) Math.atan2(this.motX, this.motZ)) * 180.0F / 3.1415927F;
             if (this.g > 0) {
                 --this.g;
             }
@@ -169,19 +204,24 @@ public class EntityGhast extends EntityFlying implements IMonster {
     }
 
     protected void dropDeathLoot(boolean flag, int i) {
+        // CraftBukkit start
+        java.util.List<org.bukkit.inventory.ItemStack> loot = new java.util.ArrayList<org.bukkit.inventory.ItemStack>();
         int j = this.random.nextInt(2) + this.random.nextInt(1 + i);
 
         int k;
 
-        for (k = 0; k < j; ++k) {
-            this.b(Item.GHAST_TEAR.id, 1);
+        if (j > 0) {
+            loot.add(CraftItemStack.asNewCraftStack(Item.GHAST_TEAR, j));
         }
 
         j = this.random.nextInt(3) + this.random.nextInt(1 + i);
 
-        for (k = 0; k < j; ++k) {
-            this.b(Item.SULPHUR.id, 1);
+        if (j > 0) {
+            loot.add(CraftItemStack.asNewCraftStack(Item.SULPHUR, j));
         }
+
+        org.bukkit.craftbukkit.event.CraftEventFactory.callEntityDeathEvent(this, loot);
+        // CraftBukkit end
     }
 
     protected float aX() {
@@ -194,5 +234,17 @@ public class EntityGhast extends EntityFlying implements IMonster {
 
     public int bv() {
         return 1;
+    }
+
+    public void b(NBTTagCompound nbttagcompound) {
+        super.b(nbttagcompound);
+        nbttagcompound.setInt("ExplosionPower", this.explosionPower);
+    }
+
+    public void a(NBTTagCompound nbttagcompound) {
+        super.a(nbttagcompound);
+        if (nbttagcompound.hasKey("ExplosionPower")) {
+            this.explosionPower = nbttagcompound.getInt("ExplosionPower");
+        }
     }
 }

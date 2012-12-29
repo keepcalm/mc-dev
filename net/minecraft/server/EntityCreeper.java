@@ -1,11 +1,17 @@
 package net.minecraft.server;
 
+// CraftBukkit start
+import org.bukkit.craftbukkit.event.CraftEventFactory;
+import org.bukkit.event.entity.ExplosionPrimeEvent;
+// CraftBukkit end
+
 public class EntityCreeper extends EntityMonster {
 
     private int d;
     private int fuseTicks;
     private int maxFuseTicks = 30;
     private int explosionRadius = 3;
+    private int record = -1; // CraftBukkit
 
     public EntityCreeper(World world) {
         super(world);
@@ -87,14 +93,18 @@ public class EntityCreeper extends EntityMonster {
                 this.fuseTicks = this.maxFuseTicks;
                 if (!this.world.isStatic) {
                     boolean flag = this.world.getGameRules().getBoolean("mobGriefing");
+                    // CraftBukkit start
+                    float radius = this.isPowered() ? 6.0F : 3.0F;
 
-                    if (this.isPowered()) {
-                        this.world.explode(this, this.locX, this.locY, this.locZ, (float) (this.explosionRadius * 2), flag);
+                    ExplosionPrimeEvent event = new ExplosionPrimeEvent(this.getBukkitEntity(), radius, false);
+                    this.world.getServer().getPluginManager().callEvent(event);
+                    if (!event.isCancelled()) {
+                        this.world.createExplosion(this, this.locX, this.locY, this.locZ, event.getRadius(), event.getFire(), flag);
+                        this.die();
                     } else {
-                        this.world.explode(this, this.locX, this.locY, this.locZ, (float) this.explosionRadius, flag);
+                        this.fuseTicks = 0;
                     }
-
-                    this.die();
+                    // CraftBukkit end
                 }
             }
         }
@@ -111,13 +121,45 @@ public class EntityCreeper extends EntityMonster {
     }
 
     public void die(DamageSource damagesource) {
-        super.die(damagesource);
+        // CraftBukkit start - rearranged the method (super call to end, drop to dropDeathLoot)
         if (damagesource.getEntity() instanceof EntitySkeleton) {
             int i = Item.RECORD_1.id + this.random.nextInt(Item.RECORD_12.id - Item.RECORD_1.id + 1);
 
-            this.b(i, 1);
+            // this.b(i, 1); // CraftBukkit
+            this.record = i;
         }
+
+        super.die(damagesource);
+        // CraftBukkit end
     }
+
+    // CraftBukkit start - whole method
+    protected void dropDeathLoot(boolean flag, int i) {
+        int j = this.getLootId();
+
+        java.util.List<org.bukkit.inventory.ItemStack> loot = new java.util.ArrayList<org.bukkit.inventory.ItemStack>();
+
+        if (j > 0) {
+            int k = this.random.nextInt(3);
+
+            if (i > 0) {
+                k += this.random.nextInt(i + 1);
+            }
+
+            if (k > 0) {
+                loot.add(new org.bukkit.inventory.ItemStack(j, k));
+            }
+        }
+
+        // Drop a music disc?
+        if (this.record != -1) {
+            loot.add(new org.bukkit.inventory.ItemStack(this.record, 1));
+            this.record = -1;
+        }
+
+        CraftEventFactory.callEntityDeathEvent(this, loot); // raise event even for those times when the entity does not drop loot
+    }
+    // CraftBukkit end
 
     public boolean m(Entity entity) {
         return true;
@@ -141,6 +183,20 @@ public class EntityCreeper extends EntityMonster {
 
     public void a(EntityLightning entitylightning) {
         super.a(entitylightning);
-        this.datawatcher.watch(17, Byte.valueOf((byte) 1));
+        // CraftBukkit start
+        if (CraftEventFactory.callCreeperPowerEvent(this, entitylightning, org.bukkit.event.entity.CreeperPowerEvent.PowerCause.LIGHTNING).isCancelled()) {
+            return;
+        }
+
+        this.setPowered(true);
+    }
+
+    public void setPowered(boolean powered) {
+        if (!powered) {
+            this.datawatcher.watch(17, Byte.valueOf((byte) 0));
+        } else {
+            this.datawatcher.watch(17, Byte.valueOf((byte) 1));
+        }
+        // CraftBukkit end
     }
 }

@@ -3,6 +3,8 @@ package net.minecraft.server;
 import java.io.DataInputStream;
 import java.io.DataOutputStream;
 
+import java.io.IOException; // CraftBukkit
+
 public class Packet3Chat extends Packet {
 
     public static int a = 119;
@@ -19,24 +21,27 @@ public class Packet3Chat extends Packet {
 
     public Packet3Chat(String s, boolean flag) {
         this.c = true;
-        if (s.length() > a) {
-            s = s.substring(0, a);
+
+        /* CraftBukkit start - handle this later
+        if (s.length() > b) {
+            s = s.substring(0, b);
         }
+        // CraftBukkit end */
 
         this.message = s;
         this.c = flag;
     }
 
-    public void a(DataInputStream datainputstream) {
+    public void a(DataInputStream datainputstream) throws IOException { // CraftBukkit
         this.message = a(datainputstream, a);
     }
 
-    public void a(DataOutputStream dataoutputstream) {
+    public void a(DataOutputStream dataoutputstream) throws IOException { // CraftBukkit
         a(this.message, dataoutputstream);
     }
 
-    public void handle(NetHandler nethandler) {
-        nethandler.a(this);
+    public void handle(Connection connection) {
+        connection.a(this);
     }
 
     public int a() {

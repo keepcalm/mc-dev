@@ -1,5 +1,10 @@
 package net.minecraft.server;
 
+// CraftBukkit start
+import org.bukkit.event.entity.EntityRegainHealthEvent;
+import org.bukkit.event.entity.ExplosionPrimeEvent;
+// CraftBukkit end
+
 public class EntityWitherSkull extends EntityFireball {
 
     public EntityWitherSkull(World world) {
@@ -35,7 +40,7 @@ public class EntityWitherSkull extends EntityFireball {
             if (movingobjectposition.entity != null) {
                 if (this.shooter != null) {
                     if (movingobjectposition.entity.damageEntity(DamageSource.mobAttack(this.shooter), 8) && !movingobjectposition.entity.isAlive()) {
-                        this.shooter.heal(5);
+                        this.shooter.heal(5, EntityRegainHealthEvent.RegainReason.WITHER); // CraftBukkit
                     }
                 } else {
                     movingobjectposition.entity.damageEntity(DamageSource.MAGIC, 5);
@@ -58,7 +63,15 @@ public class EntityWitherSkull extends EntityFireball {
                 }
             }
 
-            this.world.createExplosion(this, this.locX, this.locY, this.locZ, 1.0F, false, this.world.getGameRules().getBoolean("mobGriefing"));
+            // CraftBukkit start
+            ExplosionPrimeEvent event = new ExplosionPrimeEvent(this.getBukkitEntity(), 1.0F, false);
+            this.world.getServer().getPluginManager().callEvent(event);
+
+            if (!event.isCancelled()) {
+                this.world.createExplosion(this, this.locX, this.locY, this.locZ, event.getRadius(), event.getFire(), this.world.getGameRules().getBoolean("mobGriefing"));
+            }
+            // CraftBukkit end
+
             this.die();
         }
     }

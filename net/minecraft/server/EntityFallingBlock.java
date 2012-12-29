@@ -3,6 +3,11 @@ package net.minecraft.server;
 import java.util.ArrayList;
 import java.util.Iterator;
 
+//CraftBukkit start
+import org.bukkit.craftbukkit.event.CraftEventFactory;
+import org.bukkit.event.entity.EntityDamageEvent;
+// CraftBukkit end
+
 public class EntityFallingBlock extends Entity {
 
     public int id;
@@ -20,7 +25,7 @@ public class EntityFallingBlock extends Entity {
         this.dropItem = true;
         this.e = false;
         this.hurtEntities = false;
-        this.fallHurtMax = 20;
+        this.fallHurtMax = 40;
         this.fallHurtAmount = 2.0F;
     }
 
@@ -34,7 +39,7 @@ public class EntityFallingBlock extends Entity {
         this.dropItem = true;
         this.e = false;
         this.hurtEntities = false;
-        this.fallHurtMax = 20;
+        this.fallHurtMax = 40;
         this.fallHurtAmount = 2.0F;
         this.id = i;
         this.data = j;
@@ -79,11 +84,13 @@ public class EntityFallingBlock extends Entity {
                 int k = MathHelper.floor(this.locZ);
 
                 if (this.c == 1) {
-                    if (this.c == 1 && this.world.getTypeId(i, j, k) == this.id) {
-                        this.world.setTypeId(i, j, k, 0);
-                    } else {
+                    // CraftBukkit - compare data and call event
+                    if (this.c != 1 || this.world.getTypeId(i, j, k) != this.id || this.world.getData(i, j, k) != this.data || CraftEventFactory.callEntityChangeBlockEvent(this, i, j, k, 0, 0).isCancelled()) {
                         this.die();
+                        return;
                     }
+
+                    this.world.setTypeId(i, j, k, 0);
                 }
 
                 if (this.onGround) {
@@ -92,7 +99,13 @@ public class EntityFallingBlock extends Entity {
                     this.motY *= -0.5D;
                     if (this.world.getTypeId(i, j, k) != Block.PISTON_MOVING.id) {
                         this.die();
-                        if (!this.e && this.world.mayPlace(this.id, i, j, k, true, 1, (Entity) null) && !BlockSand.canFall(this.world, i, j - 1, k) && this.world.setTypeIdAndData(i, j, k, this.id, this.data)) {
+                        // CraftBukkit start
+                        if (!this.e && this.world.mayPlace(this.id, i, j, k, true, 1, (Entity) null) && !BlockSand.canFall(this.world, i, j - 1, k) /* mimic the false conditions of setTypeIdAndData */ && i >= -30000000 && k >= -30000000 && i < 30000000 && k < 30000000 && j > 0 && j < 256 && !(this.world.getTypeId(i, j, k) == this.id && this.world.getData(i, j, k) == this.data)) {
+                            if (CraftEventFactory.callEntityChangeBlockEvent(this, i, j, k, this.id, this.data).isCancelled()) {
+                                return;
+                            }
+                            this.world.setTypeIdAndData(i, j, k, this.id, this.data);
+                            // CraftBukkit end
                             if (Block.byId[this.id] instanceof BlockSand) {
                                 ((BlockSand) Block.byId[this.id]).a_(this.world, i, j, k, this.data);
                             }
@@ -123,7 +136,16 @@ public class EntityFallingBlock extends Entity {
                 while (iterator.hasNext()) {
                     Entity entity = (Entity) iterator.next();
 
-                    entity.damageEntity(damagesource, Math.min(MathHelper.d((float) i * this.fallHurtAmount), this.fallHurtMax));
+                    // CraftBukkit start
+                    int damage = Math.min(MathHelper.d((float) i * this.fallHurtAmount), this.fallHurtMax);
+
+                    EntityDamageEvent event = CraftEventFactory.callEntityDamageEvent(this, entity, EntityDamageEvent.DamageCause.FALLING_BLOCK, damage);
+                    if (event.isCancelled()) {
+                        continue;
+                    }
+
+                    entity.damageEntity(damagesource, event.getDamage());
+                    // CraftBukkit end
                 }
 
                 if (this.id == Block.ANVIL.id && (double) this.random.nextFloat() < 0.05000000074505806D + (double) i * 0.05D) {
@@ -174,5 +196,11 @@ public class EntityFallingBlock extends Entity {
 
     public void e(boolean flag) {
         this.hurtEntities = flag;
+    }
+
+    public void a(CrashReportSystemDetails crashreportsystemdetails) {
+        super.a(crashreportsystemdetails);
+        crashreportsystemdetails.a("Immitating block ID", Integer.valueOf(this.id));
+        crashreportsystemdetails.a("Immitating block data", Integer.valueOf(this.data));
     }
 }

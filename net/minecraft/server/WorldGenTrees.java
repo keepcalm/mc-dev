@@ -2,7 +2,9 @@ package net.minecraft.server;
 
 import java.util.Random;
 
-public class WorldGenTrees extends WorldGenerator {
+import org.bukkit.BlockChangeDelegate; // CraftBukkit
+
+public class WorldGenTrees extends WorldGenerator implements BlockSapling.TreeGenerator { // CraftBukkit add interface
 
     private final int a;
     private final boolean b;
@@ -22,6 +24,12 @@ public class WorldGenTrees extends WorldGenerator {
     }
 
     public boolean a(World world, Random random, int i, int j, int k) {
+        // CraftBukkit start - moved to generate
+        return this.generate((BlockChangeDelegate) world, random, i, j, k);
+    }
+
+    public boolean generate(BlockChangeDelegate world, Random random, int i, int j, int k) {
+        // CraftBukkit end
         int l = random.nextInt(3) + this.a;
         boolean flag = true;
 
@@ -159,7 +167,8 @@ public class WorldGenTrees extends WorldGenerator {
         }
     }
 
-    private void b(World world, int i, int j, int k, int l) {
+    // CraftBukkit - Changed world to BlockChangeDelegate
+    private void b(BlockChangeDelegate world, int i, int j, int k, int l) {
         this.setTypeAndData(world, i, j, k, Block.VINE.id, l);
         int i1 = 4;
 

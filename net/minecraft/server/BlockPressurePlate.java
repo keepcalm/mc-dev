@@ -4,6 +4,11 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Random;
 
+// CraftBukkit start
+import org.bukkit.event.block.BlockRedstoneEvent;
+import org.bukkit.event.entity.EntityInteractEvent;
+// CraftBukkit end
+
 public class BlockPressurePlate extends Block {
 
     private EnumMobType a;
@@ -101,6 +106,39 @@ public class BlockPressurePlate extends Block {
                 }
             }
         }
+
+        // CraftBukkit start - Interact Pressure Plate
+        org.bukkit.World bworld = world.getWorld();
+        org.bukkit.plugin.PluginManager manager = world.getServer().getPluginManager();
+
+        if (flag != flag1) {
+            if (flag1) {
+                for (Object object : list) {
+                    if (object != null) {
+                        org.bukkit.event.Cancellable cancellable;
+
+                        if (object instanceof EntityHuman) {
+                            cancellable = org.bukkit.craftbukkit.event.CraftEventFactory.callPlayerInteractEvent((EntityHuman) object, org.bukkit.event.block.Action.PHYSICAL, i, j, k, -1, null);
+                        } else if (object instanceof Entity) {
+                            cancellable = new EntityInteractEvent(((Entity) object).getBukkitEntity(), bworld.getBlockAt(i, j, k));
+                            manager.callEvent((EntityInteractEvent) cancellable);
+                        } else {
+                            continue;
+                        }
+
+                        if (cancellable.isCancelled()) {
+                            return;
+                        }
+                    }
+                }
+            }
+
+            BlockRedstoneEvent eventRedstone = new BlockRedstoneEvent(bworld.getBlockAt(i, j, k), flag ? 1 : 0, flag1 ? 1 : 0);
+            manager.callEvent(eventRedstone);
+
+            flag1 = eventRedstone.getNewCurrent() > 0;
+        }
+        // CraftBukkit end
 
         if (flag1 && !flag) {
             world.setData(i, j, k, 1);

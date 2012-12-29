@@ -4,6 +4,11 @@ import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
 
+// CraftBukkit start
+import org.bukkit.craftbukkit.inventory.CraftItemStack;
+import org.bukkit.craftbukkit.inventory.CraftShapelessRecipe;
+// CraftBukkit end
+
 public class ShapelessRecipes implements IRecipe {
 
     private final ItemStack result;
@@ -13,6 +18,20 @@ public class ShapelessRecipes implements IRecipe {
         this.result = itemstack;
         this.ingredients = list;
     }
+
+    // CraftBukkit start
+    @SuppressWarnings("unchecked")
+    public org.bukkit.inventory.ShapelessRecipe toBukkitRecipe() {
+        CraftItemStack result = CraftItemStack.asCraftMirror(this.result);
+        CraftShapelessRecipe recipe = new CraftShapelessRecipe(result, this);
+        for (ItemStack stack : (List<ItemStack>) this.ingredients) {
+            if (stack != null) {
+                recipe.addIngredient(org.bukkit.Material.getMaterial(stack.id), stack.getData());
+            }
+        }
+        return recipe;
+    }
+    // CraftBukkit end
 
     public ItemStack b() {
         return this.result;

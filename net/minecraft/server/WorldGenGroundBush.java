@@ -2,7 +2,9 @@ package net.minecraft.server;
 
 import java.util.Random;
 
-public class WorldGenGroundBush extends WorldGenerator {
+import org.bukkit.BlockChangeDelegate; // CraftBukkit
+
+public class WorldGenGroundBush extends WorldGenerator implements BlockSapling.TreeGenerator { // CraftBukkit add interface
 
     private int a;
     private int b;
@@ -13,6 +15,12 @@ public class WorldGenGroundBush extends WorldGenerator {
     }
 
     public boolean a(World world, Random random, int i, int j, int k) {
+        // CraftBukkit start - moved to generate
+        return this.generate((BlockChangeDelegate) world, random, i, j, k);
+    }
+
+    public boolean generate(BlockChangeDelegate world, Random random, int i, int j, int k) {
+        // CraftBukkit end
         int l;
 
         for (boolean flag = false; ((l = world.getTypeId(i, j, k)) == 0 || l == Block.LEAVES.id) && j > 0; --j) {
@@ -41,7 +49,11 @@ public class WorldGenGroundBush extends WorldGenerator {
                     }
                 }
             }
+        // CraftBukkit start - return false if gen was unsuccessful
+        } else {
+            return false;
         }
+        // CraftBukkit end
 
         return true;
     }

@@ -1,9 +1,14 @@
 package net.minecraft.server;
 
+// CraftBukkit start
+import org.bukkit.entity.Player;
+import org.bukkit.event.entity.SheepDyeWoolEvent;
+// CraftBukkit end
+
 public class ItemDye extends Item {
 
     public static final String[] a = new String[] { "black", "red", "green", "brown", "blue", "purple", "cyan", "silver", "gray", "pink", "lime", "yellow", "lightBlue", "magenta", "orange", "white"};
-    public static final int[] b = new int[] { 1973019, 11743532, 3887386, 5320730, 2437522, 8073150, 2651799, 2651799, 4408131, 14188952, 4312372, 14602026, 6719955, 12801229, 15435844, 15790320};
+    public static final int[] b = new int[] { 1973019, 11743532, 3887386, 5320730, 2437522, 8073150, 2651799, 11250603, 4408131, 14188952, 4312372, 14602026, 6719955, 12801229, 15435844, 15790320};
 
     public ItemDye(int i) {
         super(i);
@@ -12,7 +17,7 @@ public class ItemDye extends Item {
         this.a(CreativeModeTab.l);
     }
 
-    public String c_(ItemStack itemstack) {
+    public String d(ItemStack itemstack) {
         int i = MathHelper.a(itemstack.getData(), 0, 15);
 
         return super.getName() + "." + a[i];
@@ -30,16 +35,23 @@ public class ItemDye extends Item {
                 i1 = world.getTypeId(i, j, k);
                 if (i1 == Block.SAPLING.id) {
                     if (!world.isStatic) {
-                        ((BlockSapling) Block.SAPLING).grow(world, i, j, k, world.random);
-                        --itemstack.count;
+                        // CraftBukkit start
+                        Player player = (entityhuman instanceof EntityPlayer) ? (Player) entityhuman.getBukkitEntity() : null;
+                        ((BlockSapling) Block.SAPLING).grow(world, i, j, k, world.random, true, player, itemstack);
+                        //--itemstack.count; - called later if the bonemeal attempt was succesful
+                        // CraftBukkit end
                     }
 
                     return true;
                 }
 
                 if (i1 == Block.BROWN_MUSHROOM.id || i1 == Block.RED_MUSHROOM.id) {
-                    if (!world.isStatic && ((BlockMushroom) Block.byId[i1]).grow(world, i, j, k, world.random)) {
-                        --itemstack.count;
+                    // CraftBukkit start
+                    if (!world.isStatic) {
+                        Player player = (entityhuman instanceof EntityPlayer) ? (Player) entityhuman.getBukkitEntity() : null;
+                        ((BlockMushroom) Block.byId[i1]).grow(world, i, j, k, world.random, true, player, itemstack);
+                        //--itemstack.count; - called later if the bonemeal attempt was succesful
+                        // CraftBukkit end
                     }
 
                     return true;
@@ -167,6 +179,18 @@ public class ItemDye extends Item {
             int i = BlockCloth.e_(itemstack.getData());
 
             if (!entitysheep.isSheared() && entitysheep.getColor() != i) {
+                // CraftBukkit start
+                byte bColor = (byte) i;
+                SheepDyeWoolEvent event = new SheepDyeWoolEvent((org.bukkit.entity.Sheep) entitysheep.getBukkitEntity(), org.bukkit.DyeColor.getByData(bColor));
+                entitysheep.world.getServer().getPluginManager().callEvent(event);
+
+                if (event.isCancelled()) {
+                    return false;
+                }
+
+                i = (byte) event.getColor().getData();
+                // CraftBukkit end
+
                 entitysheep.setColor(i);
                 --itemstack.count;
             }

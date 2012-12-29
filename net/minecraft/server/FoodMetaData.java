@@ -1,11 +1,15 @@
 package net.minecraft.server;
 
+import org.bukkit.event.entity.EntityDamageEvent; // CraftBukkit
+
 public class FoodMetaData {
 
-    private int foodLevel = 20;
-    private float saturationLevel = 5.0F;
-    private float exhaustionLevel;
-    private int foodTickTimer = 0;
+    // CraftBukkit start - all made public
+    public int foodLevel = 20;
+    public float saturationLevel = 5.0F;
+    public float exhaustionLevel;
+    public int foodTickTimer = 0;
+    // CraftBukkit end
     private int e = 20;
 
     public FoodMetaData() {}
@@ -28,21 +32,38 @@ public class FoodMetaData {
             if (this.saturationLevel > 0.0F) {
                 this.saturationLevel = Math.max(this.saturationLevel - 1.0F, 0.0F);
             } else if (i > 0) {
-                this.foodLevel = Math.max(this.foodLevel - 1, 0);
+                // CraftBukkit start
+                org.bukkit.event.entity.FoodLevelChangeEvent event = org.bukkit.craftbukkit.event.CraftEventFactory.callFoodLevelChangeEvent(entityhuman, Math.max(this.foodLevel - 1, 0));
+
+                if (!event.isCancelled()) {
+                    this.foodLevel = event.getFoodLevel();
+                }
+
+                ((EntityPlayer) entityhuman).playerConnection.sendPacket(new Packet8UpdateHealth(entityhuman.getHealth(), this.foodLevel, this.saturationLevel));
+                // CraftBukkit end
             }
         }
 
-        if (this.foodLevel >= 18 && entityhuman.ce()) {
+        if (this.foodLevel >= 18 && entityhuman.cd()) {
             ++this.foodTickTimer;
             if (this.foodTickTimer >= 80) {
-                entityhuman.heal(1);
+                // CraftBukkit - added RegainReason
+                entityhuman.heal(1, org.bukkit.event.entity.EntityRegainHealthEvent.RegainReason.SATIATED);
                 this.foodTickTimer = 0;
             }
         } else if (this.foodLevel <= 0) {
             ++this.foodTickTimer;
             if (this.foodTickTimer >= 80) {
                 if (entityhuman.getHealth() > 10 || i >= 3 || entityhuman.getHealth() > 1 && i >= 2) {
-                    entityhuman.damageEntity(DamageSource.STARVE, 1);
+                    // CraftBukkit start
+                    EntityDamageEvent event = new EntityDamageEvent(entityhuman.getBukkitEntity(), EntityDamageEvent.DamageCause.STARVATION, 1);
+                    entityhuman.world.getServer().getPluginManager().callEvent(event);
+
+                    if (!event.isCancelled()) {
+                        event.getEntity().setLastDamageCause(event);
+                        entityhuman.damageEntity(DamageSource.STARVE, event.getDamage());
+                    }
+                    // CraftBukkit end
                 }
 
                 this.foodTickTimer = 0;

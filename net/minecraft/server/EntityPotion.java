@@ -3,6 +3,13 @@ package net.minecraft.server;
 import java.util.Iterator;
 import java.util.List;
 
+// CraftBukkit start
+import java.util.HashMap;
+
+import org.bukkit.craftbukkit.entity.CraftLivingEntity;
+import org.bukkit.entity.LivingEntity;
+// CraftBukkit end
+
 public class EntityPotion extends EntityProjectile {
 
     private ItemStack c;
@@ -55,7 +62,7 @@ public class EntityPotion extends EntityProjectile {
 
     protected void a(MovingObjectPosition movingobjectposition) {
         if (!this.world.isStatic) {
-            List list = Item.POTION.l(this.c);
+            List list = Item.POTION.g(this.c);
 
             if (list != null && !list.isEmpty()) {
                 AxisAlignedBB axisalignedbb = this.boundingBox.grow(4.0D, 2.0D, 4.0D);
@@ -63,6 +70,9 @@ public class EntityPotion extends EntityProjectile {
 
                 if (list1 != null && !list1.isEmpty()) {
                     Iterator iterator = list1.iterator();
+
+                    // CraftBukkit
+                    HashMap<LivingEntity, Double> affected = new HashMap<LivingEntity, Double>();
 
                     while (iterator.hasNext()) {
                         EntityLiving entityliving = (EntityLiving) iterator.next();
@@ -75,14 +85,38 @@ public class EntityPotion extends EntityProjectile {
                                 d1 = 1.0D;
                             }
 
+                            // CraftBukkit start
+                            affected.put((LivingEntity) entityliving.getBukkitEntity(), d1);
+                        }
+                    }
+
+                    org.bukkit.event.entity.PotionSplashEvent event = org.bukkit.craftbukkit.event.CraftEventFactory.callPotionSplashEvent(this, affected);
+                    if (!event.isCancelled()) {
+                        for (LivingEntity victim : event.getAffectedEntities()) {
+                            if (!(victim instanceof CraftLivingEntity)) {
+                                continue;
+                            }
+
+                            EntityLiving entityliving = ((CraftLivingEntity) victim).getHandle();
+                            double d1 = event.getIntensity(victim);
+                            // CraftBukkit end
+
                             Iterator iterator1 = list.iterator();
 
                             while (iterator1.hasNext()) {
                                 MobEffect mobeffect = (MobEffect) iterator1.next();
                                 int i = mobeffect.getEffectId();
 
+                                // CraftBukkit start - abide by PVP settings - for players only!
+                                if (!this.world.pvpMode && this.getShooter() instanceof EntityPlayer && entityliving instanceof EntityPlayer && entityliving != this.getShooter()) {
+                                    // Block SLOWER_MOVEMENT, SLOWER_DIG, HARM, BLINDNESS, HUNGER, WEAKNESS and POISON potions
+                                    if (i == 2 || i == 4 || i == 7 || i == 15 || i == 17 || i == 18 || i == 19) continue;
+                                }
+                                // CraftBukkit end
+
                                 if (MobEffectList.byId[i].isInstant()) {
-                                    MobEffectList.byId[i].applyInstantEffect(this.getShooter(), entityliving, mobeffect.getAmplifier(), d1);
+                                    // CraftBukkit - added 'this'
+                                    MobEffectList.byId[i].applyInstantEffect(this.getShooter(), entityliving, mobeffect.getAmplifier(), d1, this);
                                 } else {
                                     int j = (int) (d1 * (double) mobeffect.getDuration() + 0.5D);
 

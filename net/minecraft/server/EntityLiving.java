@@ -6,61 +6,68 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Random;
 
+// CraftBukkit start
+import org.bukkit.craftbukkit.event.CraftEventFactory;
+import org.bukkit.event.entity.EntityDamageByBlockEvent;
+import org.bukkit.event.entity.EntityDamageEvent;
+import org.bukkit.event.entity.EntityRegainHealthEvent;
+// CraftBukkit end
+
 public abstract class EntityLiving extends Entity {
 
-    private static final float[] b = new float[] { 0.0F, 0.0F, 0.005F, 0.01F};
-    private static final float[] c = new float[] { 0.0F, 0.0F, 0.05F, 0.1F};
-    private static final float[] d = new float[] { 0.0F, 0.0F, 0.005F, 0.02F};
-    public static final float[] as = new float[] { 0.0F, 0.01F, 0.07F, 0.2F};
+    private static final float[] b = new float[] { 0.0F, 0.0F, 0.05F, 0.1F};
+    private static final float[] c = new float[] { 0.0F, 0.0F, 0.05F, 0.2F};
+    private static final float[] d = new float[] { 0.0F, 0.0F, 0.05F, 0.02F};
+    public static final float[] at = new float[] { 0.0F, 0.1F, 0.15F, 0.45F};
     public int maxNoDamageTicks = 20;
-    public float au;
     public float av;
-    public float aw = 0.0F;
+    public float aw;
     public float ax = 0.0F;
     public float ay = 0.0F;
     public float az = 0.0F;
-    protected float aA;
+    public float aA = 0.0F;
     protected float aB;
     protected float aC;
     protected float aD;
-    protected boolean aE = true;
+    protected float aE;
+    protected boolean aF = true;
     protected String texture = "/mob/char.png";
-    protected boolean aG = true;
-    protected float aH = 0.0F;
-    protected String aI = null;
-    protected float aJ = 1.0F;
-    protected int aK = 0;
-    protected float aL = 0.0F;
-    public float aM = 0.1F;
-    public float aN = 0.02F;
-    public float aO;
+    protected boolean aH = true;
+    protected float aI = 0.0F;
+    protected String aJ = null;
+    protected float aK = 1.0F;
+    protected int aL = 0;
+    protected float aM = 0.0F;
+    public float aN = 0.1F;
+    public float aO = 0.02F;
     public float aP;
+    public float aQ;
     protected int health = this.getMaxHealth();
-    public int aR;
-    protected int aS;
-    public int aT;
+    public int aS;
+    protected int aT;
+    public int aU;
     public int hurtTicks;
-    public int aV;
-    public float aW = 0.0F;
+    public int aW;
+    public float aX = 0.0F;
     public int deathTicks = 0;
     public int attackTicks = 0;
-    public float aZ;
     public float ba;
-    protected boolean bb = false;
-    protected int bc;
-    public int bd = -1;
-    public float be = (float) (Math.random() * 0.8999999761581421D + 0.10000000149011612D);
-    public float bf;
+    public float bb;
+    protected boolean bc = false;
+    protected int bd;
+    public int be = -1;
+    public float bf = (float) (Math.random() * 0.8999999761581421D + 0.10000000149011612D);
     public float bg;
     public float bh;
-    protected EntityHuman killer = null;
+    public float bi;
+    public EntityHuman killer = null; // CraftBukkit - protected -> public
     protected int lastDamageByPlayerTime = 0;
-    private EntityLiving lastDamager = null;
+    public EntityLiving lastDamager = null; // CraftBukkit - private -> public
     private int f = 0;
     private EntityLiving g = null;
-    public int bk = 0;
-    protected HashMap effects = new HashMap();
-    private boolean updateEffects = true;
+    public int bl = 0;
+    public HashMap effects = new HashMap(); // CraftBukkit - protected -> public
+    public boolean updateEffects = true; // CraftBukkit - private -> public
     private int i;
     private ControllerLook lookController;
     private ControllerMove moveController;
@@ -69,36 +76,41 @@ public abstract class EntityLiving extends Entity {
     private Navigation navigation;
     protected final PathfinderGoalSelector goalSelector;
     protected final PathfinderGoalSelector targetSelector;
-    private EntityLiving bM;
-    private EntitySenses bN;
-    private float bO;
-    private ChunkCoordinates bP = new ChunkCoordinates(0, 0, 0);
-    private float bQ = -1.0F;
+    private EntityLiving bN;
+    private EntitySenses bO;
+    private float bP;
+    private ChunkCoordinates bQ = new ChunkCoordinates(0, 0, 0);
+    private float bR = -1.0F;
     private ItemStack[] equipment = new ItemStack[5];
-    protected float[] dropChances = new float[5];
-    private ItemStack[] bS = new ItemStack[5];
-    public boolean bp = false;
-    public int bq = 0;
-    protected boolean canPickUpLoot = false;
-    private boolean persistent = false;
-    protected int bs;
-    protected double bt;
+    public float[] dropChances = new float[5]; // CraftBukkit - protected -> public
+    private ItemStack[] bT = new ItemStack[5];
+    public boolean bq = false;
+    public int br = 0;
+    public boolean canPickUpLoot = false; // CraftBukkit - protected -> public
+    public boolean persistent = !this.bj(); // CraftBukkit - private -> public, change value
+    protected int bt;
     protected double bu;
     protected double bv;
     protected double bw;
     protected double bx;
-    float by = 0.0F;
-    protected int lastDamage = 0;
-    protected int bA = 0;
-    protected float bB;
+    protected double by;
+    float bz = 0.0F;
+    public int lastDamage = 0; // CraftBukkit - protected -> public
+    protected int bB = 0;
     protected float bC;
     protected float bD;
-    protected boolean bE = false;
-    protected float bF = 0.0F;
-    protected float bG = 0.7F;
-    private int bU = 0;
-    private Entity bV;
-    protected int bH = 0;
+    protected float bE;
+    protected boolean bF = false;
+    protected float bG = 0.0F;
+    protected float bH = 0.7F;
+    private int bV = 0;
+    private Entity bW;
+    protected int bI = 0;
+    // CraftBukkit start
+    public int expToDrop = 0;
+    public int maxAirTicks = 300;
+    public int maxHealth = this.getMaxHealth();
+    // CraftBukkit end
 
     public EntityLiving(World world) {
         super(world);
@@ -110,12 +122,12 @@ public abstract class EntityLiving extends Entity {
         this.jumpController = new ControllerJump(this);
         this.senses = new EntityAIBodyControl(this);
         this.navigation = new Navigation(this, world, 16.0F);
-        this.bN = new EntitySenses(this);
-        this.av = (float) (Math.random() + 1.0D) * 0.01F;
+        this.bO = new EntitySenses(this);
+        this.aw = (float) (Math.random() + 1.0D) * 0.01F;
         this.setPosition(this.locX, this.locY, this.locZ);
-        this.au = (float) Math.random() * 12398.0F;
+        this.av = (float) Math.random() * 12398.0F;
         this.yaw = (float) (Math.random() * 3.1415927410125732D * 2.0D);
-        this.ay = this.yaw;
+        this.az = this.yaw;
 
         for (int i = 0; i < this.dropChances.length; ++i) {
             this.dropChances[i] = 0.05F;
@@ -141,7 +153,7 @@ public abstract class EntityLiving extends Entity {
     }
 
     public EntitySenses aA() {
-        return this.bN;
+        return this.bO;
     }
 
     public Random aB() {
@@ -163,19 +175,19 @@ public abstract class EntityLiving extends Entity {
     }
 
     public int aE() {
-        return this.bA;
+        return this.bB;
     }
 
     public float ap() {
-        return this.ay;
+        return this.az;
     }
 
     public float aF() {
-        return this.bO;
+        return this.bP;
     }
 
     public void e(float f) {
-        this.bO = f;
+        this.bP = f;
         this.f(f);
     }
 
@@ -185,11 +197,11 @@ public abstract class EntityLiving extends Entity {
     }
 
     public EntityLiving aG() {
-        return this.bM;
+        return this.bN;
     }
 
     public void b(EntityLiving entityliving) {
-        this.bM = entityliving;
+        this.bN = entityliving;
     }
 
     public boolean a(Class oclass) {
@@ -230,28 +242,28 @@ public abstract class EntityLiving extends Entity {
     }
 
     public boolean e(int i, int j, int k) {
-        return this.bQ == -1.0F ? true : this.bP.e(i, j, k) < this.bQ * this.bQ;
+        return this.bR == -1.0F ? true : this.bQ.e(i, j, k) < this.bR * this.bR;
     }
 
     public void b(int i, int j, int k, int l) {
-        this.bP.b(i, j, k);
-        this.bQ = (float) l;
+        this.bQ.b(i, j, k);
+        this.bR = (float) l;
     }
 
     public ChunkCoordinates aJ() {
-        return this.bP;
-    }
-
-    public float aK() {
         return this.bQ;
     }
 
+    public float aK() {
+        return this.bR;
+    }
+
     public void aL() {
-        this.bQ = -1.0F;
+        this.bR = -1.0F;
     }
 
     public boolean aM() {
-        return this.bQ != -1.0F;
+        return this.bR != -1.0F;
     }
 
     public void c(EntityLiving entityliving) {
@@ -294,23 +306,33 @@ public abstract class EntityLiving extends Entity {
     }
 
     public void y() {
-        this.aO = this.aP;
+        this.aP = this.aQ;
         super.y();
         this.world.methodProfiler.a("mobBaseTick");
-        if (this.isAlive() && this.random.nextInt(1000) < this.aT++) {
-            this.aT = -this.aN();
+        if (this.isAlive() && this.random.nextInt(1000) < this.aU++) {
+            this.aU = -this.aN();
             this.aO();
         }
 
-        if (this.isAlive() && this.inBlock()) {
-            this.damageEntity(DamageSource.STUCK, 1);
+        // CraftBukkit start
+        if (this.isAlive() && this.inBlock() && !(this instanceof EntityEnderDragon)) { // EnderDragon's don't suffocate.
+            EntityDamageEvent event = new EntityDamageEvent(this.getBukkitEntity(), EntityDamageEvent.DamageCause.SUFFOCATION, 1);
+            this.world.getServer().getPluginManager().callEvent(event);
+
+            if (!event.isCancelled()) {
+                event.getEntity().setLastDamageCause(event);
+                this.damageEntity(DamageSource.STUCK, event.getDamage());
+            }
+            // CraftBukkit end
         }
 
         if (this.isFireproof() || this.world.isStatic) {
             this.extinguish();
         }
 
-        if (this.isAlive() && this.a(Material.WATER) && !this.bc() && !this.effects.containsKey(Integer.valueOf(MobEffectList.WATER_BREATHING.id))) {
+        boolean flag = this instanceof EntityHuman && ((EntityHuman) this).abilities.isInvulnerable;
+
+        if (this.isAlive() && this.a(Material.WATER) && !this.bc() && !this.effects.containsKey(Integer.valueOf(MobEffectList.WATER_BREATHING.id)) && !flag) {
             this.setAirTicks(this.g(this.getAirTicks()));
             if (this.getAirTicks() == -20) {
                 this.setAirTicks(0);
@@ -323,15 +345,27 @@ public abstract class EntityLiving extends Entity {
                     this.world.addParticle("bubble", this.locX + (double) f, this.locY + (double) f1, this.locZ + (double) f2, this.motX, this.motY, this.motZ);
                 }
 
-                this.damageEntity(DamageSource.DROWN, 2);
+                // CraftBukkit start
+                EntityDamageEvent event = new EntityDamageEvent(this.getBukkitEntity(), EntityDamageEvent.DamageCause.DROWNING, 2);
+                this.world.getServer().getPluginManager().callEvent(event);
+
+                if (!event.isCancelled() && event.getDamage() != 0) {
+                    event.getEntity().setLastDamageCause(event);
+                    this.damageEntity(DamageSource.DROWN, event.getDamage());
+                }
+                // CraftBukkit end
             }
 
             this.extinguish();
         } else {
-            this.setAirTicks(300);
+            // CraftBukkit start - only set if needed to work around a datawatcher inefficiency
+            if (this.getAirTicks() != 300) {
+                this.setAirTicks(maxAirTicks);
+            }
+            // CraftBukkit end
         }
 
-        this.aZ = this.ba;
+        this.ba = this.bb;
         if (this.attackTicks > 0) {
             --this.attackTicks;
         }
@@ -369,29 +403,49 @@ public abstract class EntityLiving extends Entity {
         }
 
         this.bx();
-        this.aD = this.aC;
-        this.ax = this.aw;
-        this.az = this.ay;
+        this.aE = this.aD;
+        this.ay = this.ax;
+        this.aA = this.az;
         this.lastYaw = this.yaw;
         this.lastPitch = this.pitch;
         this.world.methodProfiler.b();
     }
 
+    // CraftBukkit start
+    public int getExpReward() {
+        int exp = this.getExpValue(this.killer);
+
+        if (!this.world.isStatic && (this.lastDamageByPlayerTime > 0 || this.alwaysGivesExp()) && !this.isBaby()) {
+            return exp;
+        } else {
+            return 0;
+        }
+    }
+
+    public int getScaledHealth() {
+        if (this.maxHealth != this.getMaxHealth() && this.getHealth() > 0) {
+            return this.getHealth() * this.getMaxHealth() / this.maxHealth + 1;
+        } else {
+            return this.getHealth();
+        }
+    }
+    // CraftBukkit end
+
     protected void aP() {
         ++this.deathTicks;
-        if (this.deathTicks == 20) {
+        if (this.deathTicks >= 20 && !this.dead) { // CraftBukkit - (this.deathTicks == 20) -> (this.deathTicks >= 20 && !this.dead)
             int i;
 
-            if (!this.world.isStatic && (this.lastDamageByPlayerTime > 0 || this.alwaysGivesExp()) && !this.isBaby()) {
-                i = this.getExpValue(this.killer);
+            // CraftBukkit start - update getExpReward() above if the removed if() changes!
+            i = this.expToDrop;
+            while (i > 0) {
+                int j = EntityExperienceOrb.getOrbValue(i);
 
-                while (i > 0) {
-                    int j = EntityExperienceOrb.getOrbValue(i);
-
-                    i -= j;
-                    this.world.addEntity(new EntityExperienceOrb(this.world, this.locX, this.locY, this.locZ, j));
-                }
+                i -= j;
+                this.world.addEntity(new EntityExperienceOrb(this.world, this.locX, this.locY, this.locZ, j));
             }
+            this.expToDrop = 0;
+            // CraftBukkit end
 
             this.die();
 
@@ -412,7 +466,20 @@ public abstract class EntityLiving extends Entity {
     }
 
     protected int getExpValue(EntityHuman entityhuman) {
-        return this.bc;
+        if (this.bd > 0) {
+            int i = this.bd;
+            ItemStack[] aitemstack = this.getEquipment();
+
+            for (int j = 0; j < aitemstack.length; ++j) {
+                if (aitemstack[j] != null && this.dropChances[j] <= 1.0F) {
+                    i += 1 + this.random.nextInt(3);
+                }
+            }
+
+            return i;
+        } else {
+            return this.bd;
+        }
     }
 
     protected boolean alwaysGivesExp() {
@@ -432,8 +499,8 @@ public abstract class EntityLiving extends Entity {
 
     public void U() {
         super.U();
-        this.aA = this.aB;
-        this.aB = 0.0F;
+        this.aB = this.aC;
+        this.aC = 0.0F;
         this.fallDistance = 0.0F;
     }
 
@@ -445,20 +512,20 @@ public abstract class EntityLiving extends Entity {
             for (i = 0; i < 5; ++i) {
                 ItemStack itemstack = this.getEquipment(i);
 
-                if (!ItemStack.matches(itemstack, this.bS[i])) {
+                if (!ItemStack.matches(itemstack, this.bT[i])) {
                     ((WorldServer) this.world).getTracker().a((Entity) this, (Packet) (new Packet5EntityEquipment(this.id, i, itemstack)));
-                    this.bS[i] = itemstack == null ? null : itemstack.cloneItemStack();
+                    this.bT[i] = itemstack == null ? null : itemstack.cloneItemStack();
                 }
             }
 
             i = this.bJ();
             if (i > 0) {
-                if (this.bk <= 0) {
-                    this.bk = 20 * (30 - i);
+                if (this.bl <= 0) {
+                    this.bl = 20 * (30 - i);
                 }
 
-                --this.bk;
-                if (this.bk <= 0) {
+                --this.bl;
+                if (this.bl <= 0) {
                     this.r(i - 1);
                 }
             }
@@ -468,19 +535,20 @@ public abstract class EntityLiving extends Entity {
         double d0 = this.locX - this.lastX;
         double d1 = this.locZ - this.lastZ;
         float f = (float) (d0 * d0 + d1 * d1);
-        float f1 = this.aw;
+        float f1 = this.ax;
         float f2 = 0.0F;
 
-        this.aA = this.aB;
+        this.aB = this.aC;
         float f3 = 0.0F;
 
         if (f > 0.0025000002F) {
             f3 = 1.0F;
             f2 = (float) Math.sqrt((double) f) * 3.0F;
-            f1 = (float) Math.atan2(d1, d0) * 180.0F / 3.1415927F - 90.0F;
+            // CraftBukkit - Math -> TrigMath
+            f1 = (float) org.bukkit.craftbukkit.TrigMath.atan2(d1, d0) * 180.0F / 3.1415927F - 90.0F;
         }
 
-        if (this.aP > 0.0F) {
+        if (this.aQ > 0.0F) {
             f1 = this.yaw;
         }
 
@@ -488,15 +556,15 @@ public abstract class EntityLiving extends Entity {
             f3 = 0.0F;
         }
 
-        this.aB += (f3 - this.aB) * 0.3F;
+        this.aC += (f3 - this.aC) * 0.3F;
         this.world.methodProfiler.a("headTurn");
         if (this.be()) {
             this.senses.a();
         } else {
-            float f4 = MathHelper.g(f1 - this.aw);
+            float f4 = MathHelper.g(f1 - this.ax);
 
-            this.aw += f4 * 0.3F;
-            float f5 = MathHelper.g(this.yaw - this.aw);
+            this.ax += f4 * 0.3F;
+            float f5 = MathHelper.g(this.yaw - this.ax);
             boolean flag = f5 < -90.0F || f5 >= 90.0F;
 
             if (f5 < -75.0F) {
@@ -507,9 +575,9 @@ public abstract class EntityLiving extends Entity {
                 f5 = 75.0F;
             }
 
-            this.aw = this.yaw - f5;
+            this.ax = this.yaw - f5;
             if (f5 * f5 > 2500.0F) {
-                this.aw += f5 * 0.2F;
+                this.ax += f5 * 0.2F;
             }
 
             if (flag) {
@@ -528,12 +596,12 @@ public abstract class EntityLiving extends Entity {
             this.lastYaw += 360.0F;
         }
 
-        while (this.aw - this.ax < -180.0F) {
-            this.ax -= 360.0F;
+        while (this.ax - this.ay < -180.0F) {
+            this.ay -= 360.0F;
         }
 
-        while (this.aw - this.ax >= 180.0F) {
-            this.ax += 360.0F;
+        while (this.ax - this.ay >= 180.0F) {
+            this.ay += 360.0F;
         }
 
         while (this.pitch - this.lastPitch < -180.0F) {
@@ -544,23 +612,36 @@ public abstract class EntityLiving extends Entity {
             this.lastPitch += 360.0F;
         }
 
-        while (this.ay - this.az < -180.0F) {
-            this.az -= 360.0F;
+        while (this.az - this.aA < -180.0F) {
+            this.aA -= 360.0F;
         }
 
-        while (this.ay - this.az >= 180.0F) {
-            this.az += 360.0F;
+        while (this.az - this.aA >= 180.0F) {
+            this.aA += 360.0F;
         }
 
         this.world.methodProfiler.b();
-        this.aC += f2;
+        this.aD += f2;
     }
 
+    // CraftBukkit start - delegate so we can handle providing a reason for health being regained
     public void heal(int i) {
+        heal(i, EntityRegainHealthEvent.RegainReason.CUSTOM);
+    }
+
+    public void heal(int i, EntityRegainHealthEvent.RegainReason regainReason) {
         if (this.health > 0) {
-            this.health += i;
-            if (this.health > this.getMaxHealth()) {
-                this.health = this.getMaxHealth();
+            EntityRegainHealthEvent event = new EntityRegainHealthEvent(this.getBukkitEntity(), i, regainReason);
+            this.world.getServer().getPluginManager().callEvent(event);
+
+            if (!event.isCancelled()) {
+                this.health += event.getAmount();
+            }
+
+            // this.getMaxHealth() -> this.maxHealth
+            if (this.health > this.maxHealth) {
+                this.health = this.maxHealth;
+                // CraftBukkit end
             }
 
             this.noDamageTicks = this.maxNoDamageTicks / 2;
@@ -586,18 +667,29 @@ public abstract class EntityLiving extends Entity {
         } else if (this.world.isStatic) {
             return false;
         } else {
-            this.bA = 0;
+            this.bB = 0;
             if (this.health <= 0) {
                 return false;
             } else if (damagesource.k() && this.hasEffect(MobEffectList.FIRE_RESISTANCE)) {
                 return false;
             } else {
                 if ((damagesource == DamageSource.ANVIL || damagesource == DamageSource.FALLING_BLOCK) && this.getEquipment(4) != null) {
-                    i = (int) ((float) i * 0.55F);
+                    this.getEquipment(4).damage(i * 4 + this.random.nextInt(i * 2), this);
+                    i = (int) ((float) i * 0.75F);
                 }
 
-                this.bg = 1.5F;
+                this.bh = 1.5F;
                 boolean flag = true;
+
+                // CraftBukkit start
+                if (damagesource instanceof EntityDamageSource) {
+                    EntityDamageEvent event = CraftEventFactory.handleEntityDamageEvent(this, damagesource, i);
+                    if (event.isCancelled()) {
+                        return false;
+                    }
+                    i = event.getDamage();
+                }
+                // CraftBukkit end
 
                 if ((float) this.noDamageTicks > (float) this.maxNoDamageTicks / 2.0F) {
                     if (i <= this.lastDamage) {
@@ -609,13 +701,13 @@ public abstract class EntityLiving extends Entity {
                     flag = false;
                 } else {
                     this.lastDamage = i;
-                    this.aR = this.health;
+                    this.aS = this.health;
                     this.noDamageTicks = this.maxNoDamageTicks;
                     this.d(damagesource, i);
-                    this.hurtTicks = this.aV = 10;
+                    this.hurtTicks = this.aW = 10;
                 }
 
-                this.aW = 0.0F;
+                this.aX = 0.0F;
                 Entity entity = damagesource.getEntity();
 
                 if (entity != null) {
@@ -651,10 +743,10 @@ public abstract class EntityLiving extends Entity {
                             d0 = (Math.random() - Math.random()) * 0.01D;
                         }
 
-                        this.aW = (float) (Math.atan2(d1, d0) * 180.0D / 3.1415927410125732D) - this.yaw;
+                        this.aX = (float) (Math.atan2(d1, d0) * 180.0D / 3.1415927410125732D) - this.yaw;
                         this.a(entity, i, d0, d1);
                     } else {
-                        this.aW = (float) ((int) (Math.random() * 2.0D) * 180);
+                        this.aX = (float) ((int) (Math.random() * 2.0D) * 180);
                     }
                 }
 
@@ -700,11 +792,11 @@ public abstract class EntityLiving extends Entity {
     protected int b(DamageSource damagesource, int i) {
         if (!damagesource.ignoresArmor()) {
             int j = 25 - this.aW();
-            int k = i * j + this.aS;
+            int k = i * j + this.aT;
 
             this.k(i);
             i = k / 25;
-            this.aS = k % 25;
+            this.aT = k % 25;
         }
 
         return i;
@@ -714,10 +806,10 @@ public abstract class EntityLiving extends Entity {
         if (this.hasEffect(MobEffectList.RESISTANCE)) {
             int j = (this.getEffect(MobEffectList.RESISTANCE).getAmplifier() + 1) * 5;
             int k = 25 - j;
-            int l = i * k + this.aS;
+            int l = i * k + this.aT;
 
             i = l / 25;
-            this.aS = l % 25;
+            this.aT = l % 25;
         }
 
         return i;
@@ -766,15 +858,15 @@ public abstract class EntityLiving extends Entity {
     public void die(DamageSource damagesource) {
         Entity entity = damagesource.getEntity();
 
-        if (this.aK >= 0 && entity != null) {
-            entity.c(this, this.aK);
+        if (this.aL >= 0 && entity != null) {
+            entity.c(this, this.aL);
         }
 
         if (entity != null) {
             entity.a(this);
         }
 
-        this.bb = true;
+        this.bc = true;
         if (!this.world.isStatic) {
             int i = 0;
 
@@ -785,22 +877,30 @@ public abstract class EntityLiving extends Entity {
             if (!this.isBaby() && this.world.getGameRules().getBoolean("doMobLoot")) {
                 this.dropDeathLoot(this.lastDamageByPlayerTime > 0, i);
                 this.dropEquipment(this.lastDamageByPlayerTime > 0, i);
-                if (this.lastDamageByPlayerTime > 0) {
+                if (false && this.lastDamageByPlayerTime > 0) { // CraftBukkit - move rare item drop call to dropDeathLoot
                     int j = this.random.nextInt(200) - i;
 
                     if (j < 5) {
                         this.l(j <= 0 ? 1 : 0);
                     }
                 }
+            } else { // CraftBukkit
+                CraftEventFactory.callEntityDeathEvent(this); // CraftBukkit
             }
         }
 
         this.world.broadcastEntityEffect(this, (byte) 3);
     }
 
-    protected void l(int i) {}
+    // CraftBukkit start - change return type to ItemStack
+    protected ItemStack l(int i) {
+        return null;
+    }
+    // CraftBukkit end
 
     protected void dropDeathLoot(boolean flag, int i) {
+        // CraftBukkit start - whole method
+        List<org.bukkit.inventory.ItemStack> loot = new java.util.ArrayList<org.bukkit.inventory.ItemStack>();
         int j = this.getLootId();
 
         if (j > 0) {
@@ -810,10 +910,25 @@ public abstract class EntityLiving extends Entity {
                 k += this.random.nextInt(i + 1);
             }
 
-            for (int l = 0; l < k; ++l) {
-                this.b(j, 1);
+            if (k > 0) {
+                loot.add(new org.bukkit.inventory.ItemStack(j, k));
             }
         }
+
+        // Determine rare item drops and add them to the loot
+        if (this.lastDamageByPlayerTime > 0) {
+            int k = this.random.nextInt(200) - i;
+
+            if (k < 5) {
+                ItemStack itemstack = this.l(k <= 0 ? 1 : 0);
+                if (itemstack != null) {
+                    loot.add(org.bukkit.craftbukkit.inventory.CraftItemStack.asCraftMirror(itemstack));
+                }
+            }
+        }
+
+        CraftEventFactory.callEntityDeathEvent(this, loot); // raise event even for those times when the entity does not drop loot
+        // CraftBukkit end
     }
 
     protected int getLootId() {
@@ -825,13 +940,24 @@ public abstract class EntityLiving extends Entity {
         int i = MathHelper.f(f - 3.0F);
 
         if (i > 0) {
-            if (i > 4) {
-                this.makeSound("damage.fallbig", 1.0F, 1.0F);
-            } else {
-                this.makeSound("damage.fallsmall", 1.0F, 1.0F);
-            }
+            // CraftBukkit start
+            EntityDamageEvent event = new EntityDamageEvent(this.getBukkitEntity(), EntityDamageEvent.DamageCause.FALL, i);
+            this.world.getServer().getPluginManager().callEvent(event);
 
-            this.damageEntity(DamageSource.FALL, i);
+            if (!event.isCancelled() && event.getDamage() != 0) {
+                i = event.getDamage();
+
+                if (i > 4) {
+                    this.makeSound("damage.fallbig", 1.0F, 1.0F);
+                } else {
+                    this.makeSound("damage.fallsmall", 1.0F, 1.0F);
+                }
+
+                this.getBukkitEntity().setLastDamageCause(event);
+                this.damageEntity(DamageSource.FALL, i);
+            }
+            // CraftBukkit end
+
             int j = this.world.getTypeId(MathHelper.floor(this.locX), MathHelper.floor(this.locY - 0.20000000298023224D - (double) this.height), MathHelper.floor(this.locZ));
 
             if (j > 0) {
@@ -886,12 +1012,12 @@ public abstract class EntityLiving extends Entity {
                 if (this.be()) {
                     f4 = this.aF();
                 } else {
-                    f4 = this.aM;
+                    f4 = this.aN;
                 }
 
                 f4 *= f3;
             } else {
-                f4 = this.aN;
+                f4 = this.aO;
             }
 
             this.a(f, f1, f4);
@@ -956,7 +1082,7 @@ public abstract class EntityLiving extends Entity {
             this.motZ *= (double) f2;
         }
 
-        this.bf = this.bg;
+        this.bg = this.bh;
         d0 = this.locX - this.lastX;
         double d1 = this.locZ - this.lastZ;
         float f6 = MathHelper.sqrt(d0 * d0 + d1 * d1) * 4.0F;
@@ -965,8 +1091,8 @@ public abstract class EntityLiving extends Entity {
             f6 = 1.0F;
         }
 
-        this.bg += (f6 - this.bg) * 0.4F;
-        this.bh += this.bg;
+        this.bh += (f6 - this.bh) * 0.4F;
+        this.bi += this.bh;
     }
 
     public boolean g_() {
@@ -1024,19 +1150,36 @@ public abstract class EntityLiving extends Entity {
         }
 
         nbttagcompound.set("DropChances", nbttaglist1);
+        nbttagcompound.setInt("Bukkit.MaxHealth", this.maxHealth); // CraftBukkit
     }
 
     public void a(NBTTagCompound nbttagcompound) {
         this.health = nbttagcompound.getShort("Health");
+        // CraftBukkit start
+        if (nbttagcompound.hasKey("Bukkit.MaxHealth")) {
+            this.maxHealth = nbttagcompound.getInt("Bukkit.MaxHealth");
+        }
+
         if (!nbttagcompound.hasKey("Health")) {
-            this.health = this.getMaxHealth();
+            this.health = this.maxHealth; // this.getMaxHealth() -> this.maxHealth
+            // CraftBukkit
         }
 
         this.hurtTicks = nbttagcompound.getShort("HurtTime");
         this.deathTicks = nbttagcompound.getShort("DeathTime");
         this.attackTicks = nbttagcompound.getShort("AttackTime");
-        this.canPickUpLoot = nbttagcompound.getBoolean("CanPickUpLoot");
-        this.persistent = nbttagcompound.getBoolean("PersistenceRequired");
+        // CraftBukkit start - if looting or persistence is false only use it if it was set after we started using it
+        boolean data = nbttagcompound.getBoolean("CanPickUpLoot");
+        if (isLevelAtLeast(nbttagcompound, 1) || data) {
+            this.canPickUpLoot = data;
+        }
+
+        data = nbttagcompound.getBoolean("PersistenceRequired");
+        if (isLevelAtLeast(nbttagcompound, 1) || data) {
+            this.persistent = data;
+        }
+        // CraftBukkit end
+
         NBTTagList nbttaglist;
         int i;
 
@@ -1077,29 +1220,33 @@ public abstract class EntityLiving extends Entity {
     }
 
     public void f(float f) {
-        this.bC = f;
+        this.bD = f;
     }
 
     public void e(boolean flag) {
-        this.bE = flag;
+        this.bF = flag;
     }
 
     public void c() {
-        if (this.bU > 0) {
-            --this.bU;
+        if (this.bV > 0) {
+            --this.bV;
         }
 
-        if (this.bs > 0) {
-            double d0 = this.locX + (this.bt - this.locX) / (double) this.bs;
-            double d1 = this.locY + (this.bu - this.locY) / (double) this.bs;
-            double d2 = this.locZ + (this.bv - this.locZ) / (double) this.bs;
-            double d3 = MathHelper.g(this.bw - (double) this.yaw);
+        if (this.bt > 0) {
+            double d0 = this.locX + (this.bu - this.locX) / (double) this.bt;
+            double d1 = this.locY + (this.bv - this.locY) / (double) this.bt;
+            double d2 = this.locZ + (this.bw - this.locZ) / (double) this.bt;
+            double d3 = MathHelper.g(this.bx - (double) this.yaw);
 
-            this.yaw = (float) ((double) this.yaw + d3 / (double) this.bs);
-            this.pitch = (float) ((double) this.pitch + (this.bx - (double) this.pitch) / (double) this.bs);
-            --this.bs;
+            this.yaw = (float) ((double) this.yaw + d3 / (double) this.bt);
+            this.pitch = (float) ((double) this.pitch + (this.by - (double) this.pitch) / (double) this.bt);
+            --this.bt;
             this.setPosition(d0, d1, d2);
             this.b(this.yaw, this.pitch);
+        } else if (!this.bf()) {
+            this.motX *= 0.98D;
+            this.motY *= 0.98D;
+            this.motZ *= 0.98D;
         }
 
         if (Math.abs(this.motX) < 0.005D) {
@@ -1116,10 +1263,10 @@ public abstract class EntityLiving extends Entity {
 
         this.world.methodProfiler.a("ai");
         if (this.bg()) {
-            this.bE = false;
-            this.bB = 0.0F;
+            this.bF = false;
             this.bC = 0.0F;
             this.bD = 0.0F;
+            this.bE = 0.0F;
         } else if (this.bf()) {
             if (this.be()) {
                 this.world.methodProfiler.a("newAi");
@@ -1129,35 +1276,35 @@ public abstract class EntityLiving extends Entity {
                 this.world.methodProfiler.a("oldAi");
                 this.bn();
                 this.world.methodProfiler.b();
-                this.ay = this.yaw;
+                this.az = this.yaw;
             }
         }
 
         this.world.methodProfiler.b();
         this.world.methodProfiler.a("jump");
-        if (this.bE) {
+        if (this.bF) {
             if (!this.H() && !this.J()) {
-                if (this.onGround && this.bU == 0) {
+                if (this.onGround && this.bV == 0) {
                     this.bi();
-                    this.bU = 10;
+                    this.bV = 10;
                 }
             } else {
                 this.motY += 0.03999999910593033D;
             }
         } else {
-            this.bU = 0;
+            this.bV = 0;
         }
 
         this.world.methodProfiler.b();
         this.world.methodProfiler.a("travel");
-        this.bB *= 0.98F;
         this.bC *= 0.98F;
-        this.bD *= 0.9F;
-        float f = this.aM;
+        this.bD *= 0.98F;
+        this.bE *= 0.9F;
+        float f = this.aN;
 
-        this.aM *= this.bB();
-        this.e(this.bB, this.bC);
-        this.aM = f;
+        this.aN *= this.bB();
+        this.e(this.bC, this.bD);
+        this.aN = f;
         this.world.methodProfiler.b();
         this.world.methodProfiler.a("push");
         if (!this.world.isStatic) {
@@ -1166,15 +1313,16 @@ public abstract class EntityLiving extends Entity {
 
         this.world.methodProfiler.b();
         this.world.methodProfiler.a("looting");
-        if (!this.world.isStatic && this.canPickUpLoot && !this.bb && this.world.getGameRules().getBoolean("mobGriefing")) {
+        // CraftBukkit - Don't run mob pickup code on players
+        if (!this.world.isStatic && !(this instanceof EntityPlayer) && this.canPickUpLoot && !this.bc && this.world.getGameRules().getBoolean("mobGriefing")) {
             List list = this.world.a(EntityItem.class, this.boundingBox.grow(1.0D, 0.0D, 1.0D));
             Iterator iterator = list.iterator();
 
             while (iterator.hasNext()) {
                 EntityItem entityitem = (EntityItem) iterator.next();
 
-                if (!entityitem.dead && entityitem.itemStack != null) {
-                    ItemStack itemstack = entityitem.itemStack;
+                if (!entityitem.dead && entityitem.getItemStack() != null) {
+                    ItemStack itemstack = entityitem.getItemStack();
                     int i = b(itemstack);
 
                     if (i > -1) {
@@ -1296,26 +1444,30 @@ public abstract class EntityLiving extends Entity {
                 double d2 = entityhuman.locZ - this.locZ;
                 double d3 = d0 * d0 + d1 * d1 + d2 * d2;
 
-                if (this.bj() && d3 > 16384.0D) {
+                if (d3 > 16384.0D) { // CraftBukkit - remove this.bj() check
                     this.die();
                 }
 
-                if (this.bA > 600 && this.random.nextInt(800) == 0 && d3 > 1024.0D && this.bj()) {
+                if (this.bB > 600 && this.random.nextInt(800) == 0 && d3 > 1024.0D) { // CraftBukkit - remove this.bj() check
                     this.die();
                 } else if (d3 < 1024.0D) {
-                    this.bA = 0;
+                    this.bB = 0;
                 }
             }
+        // CraftBukkit start
+        } else {
+            this.bB = 0;
         }
+        // CraftBukkit end
     }
 
     protected void bl() {
-        ++this.bA;
+        ++this.bB;
         this.world.methodProfiler.a("checkDespawn");
         this.bk();
         this.world.methodProfiler.b();
         this.world.methodProfiler.a("sensing");
-        this.bN.a();
+        this.bO.a();
         this.world.methodProfiler.b();
         this.world.methodProfiler.a("targetSelector");
         this.targetSelector.a();
@@ -1343,59 +1495,59 @@ public abstract class EntityLiving extends Entity {
     protected void bm() {}
 
     protected void bn() {
-        ++this.bA;
+        ++this.bB;
         this.bk();
-        this.bB = 0.0F;
         this.bC = 0.0F;
+        this.bD = 0.0F;
         float f = 8.0F;
 
         if (this.random.nextFloat() < 0.02F) {
             EntityHuman entityhuman = this.world.findNearbyPlayer(this, (double) f);
 
             if (entityhuman != null) {
-                this.bV = entityhuman;
-                this.bH = 10 + this.random.nextInt(20);
+                this.bW = entityhuman;
+                this.bI = 10 + this.random.nextInt(20);
             } else {
-                this.bD = (this.random.nextFloat() - 0.5F) * 20.0F;
+                this.bE = (this.random.nextFloat() - 0.5F) * 20.0F;
             }
         }
 
-        if (this.bV != null) {
-            this.a(this.bV, 10.0F, (float) this.bp());
-            if (this.bH-- <= 0 || this.bV.dead || this.bV.e((Entity) this) > (double) (f * f)) {
-                this.bV = null;
+        if (this.bW != null) {
+            this.a(this.bW, 10.0F, (float) this.bp());
+            if (this.bI-- <= 0 || this.bW.dead || this.bW.e((Entity) this) > (double) (f * f)) {
+                this.bW = null;
             }
         } else {
             if (this.random.nextFloat() < 0.05F) {
-                this.bD = (this.random.nextFloat() - 0.5F) * 20.0F;
+                this.bE = (this.random.nextFloat() - 0.5F) * 20.0F;
             }
 
-            this.yaw += this.bD;
-            this.pitch = this.bF;
+            this.yaw += this.bE;
+            this.pitch = this.bG;
         }
 
         boolean flag = this.H();
         boolean flag1 = this.J();
 
         if (flag || flag1) {
-            this.bE = this.random.nextFloat() < 0.8F;
+            this.bF = this.random.nextFloat() < 0.8F;
         }
     }
 
     protected void bo() {
         int i = this.h();
 
-        if (this.bp) {
-            ++this.bq;
-            if (this.bq >= i) {
-                this.bq = 0;
-                this.bp = false;
+        if (this.bq) {
+            ++this.br;
+            if (this.br >= i) {
+                this.br = 0;
+                this.bq = false;
             }
         } else {
-            this.bq = 0;
+            this.br = 0;
         }
 
-        this.aP = (float) this.bq / (float) i;
+        this.aQ = (float) this.br / (float) i;
     }
 
     public int bp() {
@@ -1442,7 +1594,17 @@ public abstract class EntityLiving extends Entity {
     }
 
     protected void C() {
-        this.damageEntity(DamageSource.OUT_OF_WORLD, 4);
+        // CraftBukkit start
+        EntityDamageByBlockEvent event = new EntityDamageByBlockEvent(null, this.getBukkitEntity(), EntityDamageEvent.DamageCause.VOID, 4);
+        this.world.getServer().getPluginManager().callEvent(event);
+
+        if (event.isCancelled() || event.getDamage() == 0) {
+            return;
+        }
+
+        event.getEntity().setLastDamageCause(event);
+        this.damageEntity(DamageSource.OUT_OF_WORLD, event.getDamage());
+        // CraftBukkit end
     }
 
     public Vec3D Z() {
@@ -1668,7 +1830,7 @@ public abstract class EntityLiving extends Entity {
         if (this.aG() == null) {
             return 3;
         } else {
-            int i = (int) ((float) this.health - (float) this.getMaxHealth() * 0.33F);
+            int i = (int) ((float) this.health - (float) this.maxHealth * 0.33F); // this.getMaxHealth() -> this.maxHealth
 
             i -= (3 - this.world.difficulty) * 4;
             if (i < 0) {
@@ -1730,15 +1892,15 @@ public abstract class EntityLiving extends Entity {
             int i = this.random.nextInt(2);
             float f = this.world.difficulty == 3 ? 0.1F : 0.25F;
 
-            if (this.random.nextFloat() < 0.07F) {
+            if (this.random.nextFloat() < 0.1F) {
                 ++i;
             }
 
-            if (this.random.nextFloat() < 0.07F) {
+            if (this.random.nextFloat() < 0.1F) {
                 ++i;
             }
 
-            if (this.random.nextFloat() < 0.07F) {
+            if (this.random.nextFloat() < 0.1F) {
                 ++i;
             }
 
@@ -1863,14 +2025,14 @@ public abstract class EntityLiving extends Entity {
 
     protected void bF() {
         if (this.bD() != null && this.random.nextFloat() < b[this.world.difficulty]) {
-            EnchantmentManager.a(this.random, this.bD(), 5);
+            EnchantmentManager.a(this.random, this.bD(), 5 + this.world.difficulty * this.random.nextInt(6));
         }
 
         for (int i = 0; i < 4; ++i) {
             ItemStack itemstack = this.q(i);
 
             if (itemstack != null && this.random.nextFloat() < c[this.world.difficulty]) {
-                EnchantmentManager.a(this.random, itemstack, 5);
+                EnchantmentManager.a(this.random, itemstack, 5 + this.world.difficulty * this.random.nextInt(6));
             }
         }
     }
@@ -1882,9 +2044,9 @@ public abstract class EntityLiving extends Entity {
     }
 
     public void bH() {
-        if (!this.bp || this.bq >= this.h() / 2 || this.bq < 0) {
-            this.bq = -1;
-            this.bp = true;
+        if (!this.bq || this.br >= this.h() / 2 || this.br < 0) {
+            this.br = -1;
+            this.bq = true;
             if (this.world instanceof WorldServer) {
                 ((WorldServer) this.world).getTracker().a((Entity) this, (Packet) (new Packet18ArmAnimation(this, 1)));
             }

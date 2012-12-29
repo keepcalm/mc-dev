@@ -15,21 +15,23 @@ import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
 import javax.crypto.SecretKey;
 
+import java.io.IOException; // CraftBukkit
+
 public class NetworkManager implements INetworkManager {
 
     public static AtomicInteger a = new AtomicInteger();
     public static AtomicInteger b = new AtomicInteger();
     private Object h = new Object();
-    private Socket socket;
+    public Socket socket; // CraftBukkit - private -> public
     private final SocketAddress j;
     private volatile DataInputStream input;
     private volatile DataOutputStream output;
     private volatile boolean m = true;
     private volatile boolean n = false;
-    private List inboundQueue = Collections.synchronizedList(new ArrayList());
+    private java.util.Queue inboundQueue = new java.util.concurrent.ConcurrentLinkedQueue(); // CraftBukkit - Concurrent linked queue
     private List highPriorityQueue = Collections.synchronizedList(new ArrayList());
     private List lowPriorityQueue = Collections.synchronizedList(new ArrayList());
-    private NetHandler packetListener;
+    private Connection connection;
     private boolean s = false;
     private Thread t;
     private Thread u;
@@ -46,11 +48,11 @@ public class NetworkManager implements INetworkManager {
     private PrivateKey A = null;
     private int lowPriorityQueueDelay = 50;
 
-    public NetworkManager(Socket socket, String s, NetHandler nethandler, PrivateKey privatekey) {
+    public NetworkManager(Socket socket, String s, Connection connection, PrivateKey privatekey) throws IOException { // CraftBukkit - throws IOException
         this.A = privatekey;
         this.socket = socket;
         this.j = socket.getRemoteSocketAddress();
-        this.packetListener = nethandler;
+        this.connection = connection;
 
         try {
             socket.setSoTimeout(30000);
@@ -67,8 +69,8 @@ public class NetworkManager implements INetworkManager {
         this.t.start();
     }
 
-    public void a(NetHandler nethandler) {
-        this.packetListener = nethandler;
+    public void a(Connection connection) {
+        this.connection = connection;
     }
 
     public void queue(Packet packet) {
@@ -95,7 +97,7 @@ public class NetworkManager implements INetworkManager {
                 if (packet != null) {
                     Packet.a(packet, this.output);
                     if (packet instanceof Packet252KeyResponse && !this.g) {
-                        if (!this.packetListener.a()) {
+                        if (!this.connection.a()) {
                             this.z = ((Packet252KeyResponse) packet).d();
                         }
 
@@ -109,7 +111,8 @@ public class NetworkManager implements INetworkManager {
                 }
             }
 
-            if (this.lowPriorityQueueDelay-- <= 0 && (this.e == 0 || !this.lowPriorityQueue.isEmpty() && System.currentTimeMillis() - ((Packet) this.lowPriorityQueue.get(0)).timestamp >= (long) this.e)) {
+            // CraftBukkit - don't allow low priority packet to be sent unless it was placed in the queue before the first packet on the high priority queue TODO: is this still right?
+            if ((flag || this.lowPriorityQueueDelay-- <= 0) && !this.lowPriorityQueue.isEmpty() && (this.highPriorityQueue.isEmpty() || ((Packet) this.highPriorityQueue.get(0)).timestamp > ((Packet) this.lowPriorityQueue.get(0)).timestamp)) {
                 packet = this.a(true);
                 if (packet != null) {
                     Packet.a(packet, this.output);
@@ -184,11 +187,11 @@ public class NetworkManager implements INetworkManager {
         boolean flag = false;
 
         try {
-            Packet packet = Packet.a(this.input, this.packetListener.a(), this.socket);
+            Packet packet = Packet.a(this.input, this.connection.a(), this.socket);
 
             if (packet != null) {
                 if (packet instanceof Packet252KeyResponse && !this.f) {
-                    if (this.packetListener.a()) {
+                    if (this.connection.a()) {
                         this.z = ((Packet252KeyResponse) packet).a(this.A);
                     }
 
@@ -200,9 +203,9 @@ public class NetworkManager implements INetworkManager {
 
                 aint[i] += packet.a() + 1;
                 if (!this.s) {
-                    if (packet.a_() && this.packetListener.b()) {
+                    if (packet.a_() && this.connection.b()) {
                         this.x = 0;
-                        packet.handle(this.packetListener);
+                        packet.handle(this.connection);
                     } else {
                         this.inboundQueue.add(packet);
                     }
@@ -224,7 +227,7 @@ public class NetworkManager implements INetworkManager {
     }
 
     private void a(Exception exception) {
-        exception.printStackTrace();
+        // exception.printStackTrace(); // CraftBukkit - Remove console spam
         this.a("disconnect.genericReason", new Object[] { "Internal exception: " + exception.toString()});
     }
 
@@ -276,14 +279,20 @@ public class NetworkManager implements INetworkManager {
         int i = 1000;
 
         while (!this.inboundQueue.isEmpty() && i-- >= 0) {
-            Packet packet = (Packet) this.inboundQueue.remove(0);
+            Packet packet = (Packet) this.inboundQueue.poll(); // CraftBukkit - remove -> poll
 
-            packet.handle(this.packetListener);
+            // CraftBukkit start
+            if (this.connection instanceof PendingConnection ? ((PendingConnection) this.connection).c : ((PlayerConnection) this.connection).disconnected) {
+                continue;
+            }
+            // CraftBukkit end
+
+            packet.handle(this.connection);
         }
 
         this.a();
         if (this.n && this.inboundQueue.isEmpty()) {
-            this.packetListener.a(this.v, this.w);
+            this.connection.a(this.v, this.w);
         }
     }
 
@@ -300,14 +309,14 @@ public class NetworkManager implements INetworkManager {
         }
     }
 
-    private void j() {
+    private void j() throws IOException { // CraftBukkit - throws IOException
         this.f = true;
         InputStream inputstream = this.socket.getInputStream();
 
         this.input = new DataInputStream(MinecraftEncryption.a(this.z, inputstream));
     }
 
-    private void k() {
+    private void k() throws IOException { // CraftBukkit - throws IOException
         this.output.flush();
         this.g = true;
         BufferedOutputStream bufferedoutputstream = new BufferedOutputStream(MinecraftEncryption.a(this.z, this.socket.getOutputStream()), 5120);

@@ -2,6 +2,16 @@ package net.minecraft.server;
 
 import java.util.Random;
 
+// CraftBukkit start
+import java.util.ArrayList;
+
+import org.bukkit.Location;
+import org.bukkit.TreeType;
+import org.bukkit.block.BlockState;
+import org.bukkit.event.block.BlockSpreadEvent;
+import org.bukkit.event.world.StructureGrowEvent;
+// CraftBukkit end
+
 public class BlockMushroom extends BlockFlower {
 
     protected BlockMushroom(int i, int j) {
@@ -51,7 +61,18 @@ public class BlockMushroom extends BlockFlower {
             }
 
             if (world.isEmpty(i1, j1, k1) && this.d(world, i1, j1, k1)) {
-                world.setTypeId(i1, j1, k1, this.id);
+                // CraftBukkit start
+                org.bukkit.World bworld = world.getWorld();
+                BlockState blockState = bworld.getBlockAt(i1, j1, k1).getState();
+                blockState.setTypeId(this.id);
+
+                BlockSpreadEvent event = new BlockSpreadEvent(blockState.getBlock(), bworld.getBlockAt(i, j, k), blockState);
+                world.getServer().getPluginManager().callEvent(event);
+
+                if (!event.isCancelled()) {
+                    blockState.update(true);
+                }
+                // CraftBukkit end
             }
         }
     }
@@ -74,23 +95,36 @@ public class BlockMushroom extends BlockFlower {
         }
     }
 
-    public boolean grow(World world, int i, int j, int k, Random random) {
+    // CraftBukkit - added bonemeal, player and itemstack
+    public boolean grow(World world, int i, int j, int k, Random random, boolean bonemeal, org.bukkit.entity.Player player, ItemStack itemstack) {
         int l = world.getData(i, j, k);
 
         world.setRawTypeId(i, j, k, 0);
+        // CraftBukkit start
+        boolean grown = false;
+        StructureGrowEvent event = null;
+        Location location = new Location(world.getWorld(), i, j, k);
         WorldGenHugeMushroom worldgenhugemushroom = null;
 
         if (this.id == Block.BROWN_MUSHROOM.id) {
+            event = new StructureGrowEvent(location, TreeType.BROWN_MUSHROOM, bonemeal, player, new ArrayList<BlockState>());
             worldgenhugemushroom = new WorldGenHugeMushroom(0);
         } else if (this.id == Block.RED_MUSHROOM.id) {
+            event = new StructureGrowEvent(location, TreeType.RED_MUSHROOM, bonemeal, player, new ArrayList<BlockState>());
             worldgenhugemushroom = new WorldGenHugeMushroom(1);
         }
 
-        if (worldgenhugemushroom != null && worldgenhugemushroom.a(world, random, i, j, k)) {
-            return true;
-        } else {
+        if (worldgenhugemushroom != null && event != null) {
+            grown = worldgenhugemushroom.grow((org.bukkit.BlockChangeDelegate)world, random, i, j, k, event, itemstack, world.getWorld());
+            if (event.isFromBonemeal() && itemstack != null) {
+                --itemstack.count;
+            }
+        }
+        if (!grown || event.isCancelled()) {
             world.setRawTypeIdAndData(i, j, k, this.id, l);
             return false;
         }
+        return true;
+        // CraftBukkit end
     }
 }

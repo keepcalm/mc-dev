@@ -40,6 +40,7 @@ public class CrashReport {
         this.c.a("AABB Pool Size", (Callable) (new CrashReportAABBPoolSize(this)));
         this.c.a("Suspicious classes", (Callable) (new CrashReportSuspiciousClasses(this)));
         this.c.a("IntCache", (Callable) (new CrashReportIntCacheSize(this)));
+        this.c.a("CraftBukkit Information", (Callable) (new org.bukkit.craftbukkit.CraftCrashReport())); // CraftBukkit
     }
 
     public String a() {

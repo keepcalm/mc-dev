@@ -1,5 +1,7 @@
 package net.minecraft.server;
 
+import org.bukkit.event.block.BlockRedstoneEvent; // CraftBukkit
+
 public class BlockLever extends Block {
 
     protected BlockLever(int i, int j) {
@@ -63,7 +65,7 @@ public class BlockLever extends Block {
         return k1 + j1;
     }
 
-    public static int d(int i) {
+    public static int e(int i) {
         switch (i) {
         case 0:
             return 0;
@@ -174,6 +176,19 @@ public class BlockLever extends Block {
             int i1 = world.getData(i, j, k);
             int j1 = i1 & 7;
             int k1 = 8 - (i1 & 8);
+
+            // CraftBukkit start - Interact Lever
+            org.bukkit.block.Block block = world.getWorld().getBlockAt(i, j, k);
+            int old = (k1 != 8) ? 1 : 0;
+            int current = (k1 == 8) ? 1 : 0;
+
+            BlockRedstoneEvent eventRedstone = new BlockRedstoneEvent(block, old, current);
+            world.getServer().getPluginManager().callEvent(eventRedstone);
+
+            if ((eventRedstone.getNewCurrent() > 0) != (k1 == 8)) {
+                return true;
+            }
+            // CraftBukkit end
 
             world.setData(i, j, k, j1 + k1);
             world.e(i, j, k, i, j, k);

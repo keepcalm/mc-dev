@@ -1,5 +1,7 @@
 package net.minecraft.server;
 
+import org.bukkit.craftbukkit.event.CraftEventFactory; // CraftBukkit
+
 public class EntitySilverfish extends EntityMonster {
 
     private int d;
@@ -8,7 +10,7 @@ public class EntitySilverfish extends EntityMonster {
         super(world);
         this.texture = "/mob/silverfish.png";
         this.a(0.3F, 0.7F);
-        this.bG = 0.6F;
+        this.bH = 0.6F;
     }
 
     public int getMaxHealth() {
@@ -52,7 +54,7 @@ public class EntitySilverfish extends EntityMonster {
     protected void a(Entity entity, float f) {
         if (this.attackTicks <= 0 && f < 1.2F && entity.boundingBox.e > this.boundingBox.b && entity.boundingBox.b < this.boundingBox.e) {
             this.attackTicks = 20;
-            entity.damageEntity(DamageSource.mobAttack(this), this.c(entity));
+            this.m(entity);
         }
     }
 
@@ -65,7 +67,7 @@ public class EntitySilverfish extends EntityMonster {
     }
 
     public void j_() {
-        this.aw = this.yaw;
+        this.ax = this.yaw;
         super.j_();
     }
 
@@ -91,6 +93,12 @@ public class EntitySilverfish extends EntityMonster {
                                 int k1 = this.world.getTypeId(i + i1, j + l, k + j1);
 
                                 if (k1 == Block.MONSTER_EGGS.id) {
+                                    // CraftBukkit start
+                                    if (CraftEventFactory.callEntityChangeBlockEvent(this, i + i1, j + l, k + j1, 0, 0).isCancelled()) {
+                                        continue;
+                                    }
+                                    // CraftBukkit end
+
                                     this.world.triggerEffect(2001, i + i1, j + l, k + j1, Block.MONSTER_EGGS.id + (this.world.getData(i + i1, j + l, k + j1) << 12));
                                     this.world.setTypeId(i + i1, j + l, k + j1, 0);
                                     Block.MONSTER_EGGS.postBreak(this.world, i + i1, j + l, k + j1, 0);
@@ -113,6 +121,12 @@ public class EntitySilverfish extends EntityMonster {
 
                 l = this.world.getTypeId(i + Facing.b[l1], j + Facing.c[l1], k + Facing.d[l1]);
                 if (BlockMonsterEggs.e(l)) {
+                    // CraftBukkit start
+                    if (CraftEventFactory.callEntityChangeBlockEvent(this, i + Facing.b[l1], j + Facing.c[l1], k + Facing.d[l1], Block.MONSTER_EGGS.id, BlockMonsterEggs.f(l)).isCancelled()) {
+                        return;
+                    }
+                    // CraftBukkit end
+
                     this.world.setTypeIdAndData(i + Facing.b[l1], j + Facing.c[l1], k + Facing.d[l1], Block.MONSTER_EGGS.id, BlockMonsterEggs.f(l));
                     this.aR();
                     this.die();

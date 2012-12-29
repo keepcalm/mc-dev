@@ -10,35 +10,50 @@ import java.util.Random;
 import java.util.concurrent.Callable;
 import java.util.logging.Level;
 
+// CraftBukkit start
+import java.io.PrintStream;
+
+import org.bukkit.craftbukkit.LoggerOutputStream;
+import org.bukkit.event.server.ServerCommandEvent;
+// CraftBukkit end
+
 public class DedicatedServer extends MinecraftServer implements IMinecraftServer {
 
     private final List l = Collections.synchronizedList(new ArrayList());
     private RemoteStatusListener m;
     private RemoteControlListener n;
-    private PropertyManager propertyManager;
+    public PropertyManager propertyManager; // CraftBukkit - private -> public
     private boolean generateStructures;
     private EnumGamemode q;
     private ServerConnection r;
     private boolean s = false;
 
-    public DedicatedServer(File file1) {
-        super(file1);
+    // CraftBukkit start - Signature changed
+    public DedicatedServer(joptsimple.OptionSet options) {
+        super(options);
+        // CraftBukkit end
         new ThreadSleepForever(this);
     }
 
-    protected boolean init() {
+    protected boolean init() throws java.net.UnknownHostException { // CraftBukkit - throws UnknownHostException
         ThreadCommandReader threadcommandreader = new ThreadCommandReader(this);
 
         threadcommandreader.setDaemon(true);
         threadcommandreader.start();
-        ConsoleLogManager.init();
-        log.info("Starting minecraft server version 1.4.5");
+        ConsoleLogManager.init(this); // CraftBukkit
+
+        // CraftBukkit start
+        System.setOut(new PrintStream(new LoggerOutputStream(log, Level.INFO), true));
+        System.setErr(new PrintStream(new LoggerOutputStream(log, Level.SEVERE), true));
+        // CraftBukkit end
+
+        log.info("Starting minecraft server version 1.4.6");
         if (Runtime.getRuntime().maxMemory() / 1024L / 1024L < 512L) {
             log.warning("To start the server with more ram, launch it as \"java -Xmx1024M -Xms1024M -jar minecraft_server.jar\"");
         }
 
         log.info("Loading properties");
-        this.propertyManager = new PropertyManager(new File("server.properties"));
+        this.propertyManager = new PropertyManager(this.options); // CraftBukkit - CLI argument support
         if (this.I()) {
             this.d("127.0.0.1");
         } else {
@@ -79,12 +94,14 @@ public class DedicatedServer extends MinecraftServer implements IMinecraftServer
 
         try {
             this.r = new DedicatedServerConnection(this, inetaddress, this.G());
-        } catch (IOException ioexception) {
+        } catch (Throwable ioexception) { // CraftBukkit - IOException -> Throwable
             log.warning("**** FAILED TO BIND TO PORT!");
             log.log(Level.WARNING, "The exception was: " + ioexception.toString());
             log.warning("Perhaps a server is already running on that port?");
             return false;
         }
+
+        this.a((PlayerList) (new DedicatedPlayerList(this))); // CraftBukkit
 
         if (!this.getOnlineMode()) {
             log.warning("**** SERVER IS RUNNING IN OFFLINE/INSECURE MODE!");
@@ -93,7 +110,8 @@ public class DedicatedServer extends MinecraftServer implements IMinecraftServer
             log.warning("To change this, set \"online-mode\" to \"true\" in the server.properties file.");
         }
 
-        this.a((ServerConfigurationManagerAbstract) (new ServerConfigurationManager(this)));
+        // this.a((PlayerList) (new DedicatedPlayerList(this))); // CraftBukkit - moved up
+        this.convertable = new WorldLoaderServer(server.getWorldContainer()); // CraftBukkit - moved from MinecraftServer constructor
         long j = System.nanoTime();
 
         if (this.J() == null) {
@@ -143,10 +161,25 @@ public class DedicatedServer extends MinecraftServer implements IMinecraftServer
             log.info("Starting remote control listener");
             this.n = new RemoteControlListener(this);
             this.n.a();
+            this.remoteConsole = new org.bukkit.craftbukkit.command.CraftRemoteConsoleCommandSender(); // CraftBukkit
+        }
+
+        // CraftBukkit start
+        if (this.server.getBukkitSpawnRadius() > -1) {
+            log.info("'settings.spawn-radius' in bukkit.yml has been moved to 'spawn-protection' in server.properties. I will move your config for you.");
+            this.propertyManager.properties.remove("spawn-protection");
+            this.propertyManager.getInt("spawn-protection", this.server.getBukkitSpawnRadius());
+            this.server.removeBukkitSpawnRadius();
+            this.propertyManager.savePropertiesFile();
         }
 
         return true;
     }
+
+    public PropertyManager getPropertyManager() {
+        return this.propertyManager;
+    }
+    // CraftBukkit end
 
     public boolean getGenerateStructures() {
         return this.generateStructures;
@@ -157,7 +190,7 @@ public class DedicatedServer extends MinecraftServer implements IMinecraftServer
     }
 
     public int getDifficulty() {
-        return this.propertyManager.getInt("difficulty", 1);
+        return Math.max(0, Math.min(3, this.propertyManager.getInt("difficulty", 1))); // CraftBukkit - clamp values
     }
 
     public boolean isHardcore() {
@@ -187,7 +220,7 @@ public class DedicatedServer extends MinecraftServer implements IMinecraftServer
         System.exit(0);
     }
 
-    protected void r() {
+    public void r() {
         super.r();
         this.al();
     }
@@ -218,7 +251,14 @@ public class DedicatedServer extends MinecraftServer implements IMinecraftServer
         while (!this.l.isEmpty()) {
             ServerCommand servercommand = (ServerCommand) this.l.remove(0);
 
-            this.getCommandHandler().a(servercommand.source, servercommand.command);
+            // CraftBukkit start - ServerCommand for preprocessing
+            ServerCommandEvent event = new ServerCommandEvent(this.console, servercommand.command);
+            this.server.getPluginManager().callEvent(event);
+            servercommand = new ServerCommand(event.getCommand(), servercommand.source);
+
+            // this.getCommandHandler().a(servercommand.source, servercommand.command); // Called in dispatchServerCommand
+            this.server.dispatchServerCommand(this.console, servercommand);
+            // CraftBukkit end
         }
     }
 
@@ -226,8 +266,8 @@ public class DedicatedServer extends MinecraftServer implements IMinecraftServer
         return true;
     }
 
-    public ServerConfigurationManager am() {
-        return (ServerConfigurationManager) super.getServerConfigurationManager();
+    public DedicatedPlayerList am() {
+        return (DedicatedPlayerList) super.getPlayerList();
     }
 
     public ServerConnection ae() {
@@ -281,7 +321,7 @@ public class DedicatedServer extends MinecraftServer implements IMinecraftServer
         return this.propertyManager.getInt("spawn-protection", super.getSpawnProtection());
     }
 
-    public ServerConfigurationManagerAbstract getServerConfigurationManager() {
+    public PlayerList getPlayerList() {
         return this.am();
     }
 }

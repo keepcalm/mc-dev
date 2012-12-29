@@ -2,6 +2,8 @@ package net.minecraft.server;
 
 import java.util.Random;
 
+import org.bukkit.event.block.BlockRedstoneEvent; // CraftBukkit
+
 public class BlockDoor extends Block {
 
     protected BlockDoor(int i, Material material) {
@@ -169,19 +171,30 @@ public class BlockDoor extends Block {
                 if (!world.isStatic) {
                     this.c(world, i, j, k, i1, 0);
                 }
-            } else {
-                boolean flag1 = world.isBlockIndirectlyPowered(i, j, k) || world.isBlockIndirectlyPowered(i, j + 1, k);
+            // CraftBukkit start
+            } else if (l > 0 && Block.byId[l].isPowerSource()) {
+                org.bukkit.World bworld = world.getWorld();
+                org.bukkit.block.Block block = bworld.getBlockAt(i, j, k);
+                org.bukkit.block.Block blockTop = bworld.getBlockAt(i, j + 1, k);
 
-                if ((flag1 || l > 0 && Block.byId[l].isPowerSource()) && l != this.id) {
-                    this.setDoor(world, i, j, k, flag1);
+                int power = block.getBlockPower();
+                int powerTop = blockTop.getBlockPower();
+                if (powerTop > power) power = powerTop;
+                int oldPower = (world.getData(i, j, k) & 4) > 0 ? 15 : 0;
+
+                if (oldPower == 0 ^ power == 0) {
+                    BlockRedstoneEvent eventRedstone = new BlockRedstoneEvent(block, oldPower, power);
+                    world.getServer().getPluginManager().callEvent(eventRedstone);
+
+                    this.setDoor(world, i, j, k, eventRedstone.getNewCurrent() > 0);
                 }
+                // CraftBukkit end
             }
         } else {
             if (world.getTypeId(i, j - 1, k) != this.id) {
                 world.setTypeId(i, j, k, 0);
             }
-
-            if (l > 0 && l != this.id) {
+            else if (l > 0 && l != this.id) { // CraftBukkit
                 this.doPhysics(world, i, j - 1, k, l);
             }
         }

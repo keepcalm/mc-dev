@@ -5,6 +5,11 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
+// CraftBukkit start
+import org.bukkit.craftbukkit.inventory.CraftInventory;
+import org.bukkit.inventory.InventoryView;
+// CraftBukkit end
+
 public abstract class Container {
 
     public List b = new ArrayList();
@@ -13,6 +18,18 @@ public abstract class Container {
     private short a = 0;
     protected List listeners = new ArrayList();
     private Set f = new HashSet();
+
+    // CraftBukkit start
+    public boolean checkReachable = true;
+    public abstract InventoryView getBukkitView();
+    public void transferTo(Container other, org.bukkit.craftbukkit.entity.CraftHumanEntity player) {
+        InventoryView source = this.getBukkitView(), destination = other.getBukkitView();
+        ((CraftInventory) source.getTopInventory()).getInventory().onClose(player);
+        ((CraftInventory) source.getBottomInventory()).getInventory().onClose(player);
+        ((CraftInventory) destination.getTopInventory()).getInventory().onOpen(player);
+        ((CraftInventory) destination.getBottomInventory()).getInventory().onOpen(player);
+    }
+    // CraftBukkit end
 
     public Container() {}
 
@@ -102,8 +119,14 @@ public abstract class Container {
                     }
 
                     if (j == 1) {
-                        entityhuman.drop(playerinventory.getCarried().a(1));
-                        if (playerinventory.getCarried().count == 0) {
+                        // CraftBukkit start - store a reference
+                        ItemStack itemstack3 = playerinventory.getCarried();
+                        if (itemstack3.count > 0) {
+                            entityhuman.drop(itemstack3.a(1));
+                        }
+
+                        if (itemstack3.count == 0) {
+                            // CraftBukkit end
                             playerinventory.setCarried((ItemStack) null);
                         }
                     }
@@ -142,7 +165,12 @@ public abstract class Container {
                                 l = slot.a();
                             }
 
-                            slot.set(itemstack3.a(l));
+                            // CraftBukkit start
+                            if (itemstack3.count >= l) {
+                                slot.set(itemstack3.a(l));
+                            }
+                            // CraftBukkit end
+
                             if (itemstack3.count == 0) {
                                 playerinventory.setCarried((ItemStack) null);
                             }
@@ -158,7 +186,7 @@ public abstract class Container {
 
                             slot.a(entityhuman, playerinventory.getCarried());
                         } else if (slot.isAllowed(itemstack3)) {
-                            if (itemstack1.id == itemstack3.id && (!itemstack1.usesData() || itemstack1.getData() == itemstack3.getData()) && ItemStack.equals(itemstack1, itemstack3)) {
+                            if (itemstack1.id == itemstack3.id && itemstack1.getData() == itemstack3.getData() && ItemStack.equals(itemstack1, itemstack3)) {
                                 l = j == 0 ? itemstack3.count : 1;
                                 if (l > slot.a() - itemstack1.count) {
                                     l = slot.a() - itemstack1.count;
@@ -213,10 +241,12 @@ public abstract class Container {
                     if ((slot.inventory != playerinventory || !slot.isAllowed(itemstack1)) && itemstack1 != null) {
                         if (l > -1) {
                             playerinventory.pickup(itemstack1);
+                            slot.a(itemstack2.count);
                             slot.set((ItemStack) null);
                             slot.a(entityhuman, itemstack2);
                         }
                     } else {
+                        slot.a(itemstack2.count);
                         slot.set(itemstack1);
                         slot.a(entityhuman, itemstack2);
                     }

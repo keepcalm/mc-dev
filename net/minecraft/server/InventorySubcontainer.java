@@ -2,11 +2,11 @@ package net.minecraft.server;
 
 import java.util.List;
 
-public class InventorySubcontainer implements IInventory {
+public abstract class InventorySubcontainer implements IInventory { // CraftBukkit - abstract
 
     private String a;
     private int b;
-    private ItemStack[] items;
+    protected ItemStack[] items; // CraftBukkit - protected
     private List d;
 
     public InventorySubcontainer(String s, int i) {

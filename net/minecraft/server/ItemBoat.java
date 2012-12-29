@@ -59,12 +59,21 @@ public class ItemBoat extends Item {
                     int j = movingobjectposition.c;
                     int k = movingobjectposition.d;
 
+                    // CraftBukkit start - Boat placement
+                    org.bukkit.event.player.PlayerInteractEvent event = org.bukkit.craftbukkit.event.CraftEventFactory.callPlayerInteractEvent(entityhuman, org.bukkit.event.block.Action.RIGHT_CLICK_BLOCK, i, j, k, movingobjectposition.face, itemstack);
+
+                    if (event.isCancelled()) {
+                        return itemstack;
+                    }
+                    // CraftBukkit end
+
                     if (world.getTypeId(i, j, k) == Block.SNOW.id) {
                         --j;
                     }
 
                     EntityBoat entityboat = new EntityBoat(world, (double) ((float) i + 0.5F), (double) ((float) j + 1.0F), (double) ((float) k + 0.5F));
 
+                    entityboat.yaw = (float) (((MathHelper.floor((double) (entityhuman.yaw * 4.0F / 360.0F) + 0.5D) & 3) - 1) * 90);
                     if (!world.getCubes(entityboat, entityboat.boundingBox.grow(-0.1D, -0.1D, -0.1D)).isEmpty()) {
                         return itemstack;
                     }

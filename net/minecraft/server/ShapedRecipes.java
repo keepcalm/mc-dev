@@ -1,5 +1,10 @@
 package net.minecraft.server;
 
+// CraftBukkit start
+import org.bukkit.craftbukkit.inventory.CraftItemStack;
+import org.bukkit.craftbukkit.inventory.CraftShapedRecipe;
+// CraftBukkit end
+
 public class ShapedRecipes implements IRecipe {
 
     private int width;
@@ -7,6 +12,7 @@ public class ShapedRecipes implements IRecipe {
     private ItemStack[] items;
     private ItemStack result;
     public final int a;
+    private boolean f = false;
 
     public ShapedRecipes(int i, int j, ItemStack[] aitemstack, ItemStack itemstack) {
         this.a = itemstack.id;
@@ -15,6 +21,62 @@ public class ShapedRecipes implements IRecipe {
         this.items = aitemstack;
         this.result = itemstack;
     }
+
+    // CraftBukkit start
+    public org.bukkit.inventory.ShapedRecipe toBukkitRecipe() {
+        CraftItemStack result = CraftItemStack.asCraftMirror(this.result);
+        CraftShapedRecipe recipe = new CraftShapedRecipe(result, this);
+        switch (this.height) {
+        case 1:
+            switch (this.width) {
+            case 1:
+                recipe.shape("a");
+                break;
+            case 2:
+                recipe.shape("ab");
+                break;
+            case 3:
+                recipe.shape("abc");
+                break;
+            }
+            break;
+        case 2:
+            switch (this.width) {
+            case 1:
+                recipe.shape("a","b");
+                break;
+            case 2:
+                recipe.shape("ab","cd");
+                break;
+            case 3:
+                recipe.shape("abc","def");
+                break;
+            }
+            break;
+        case 3:
+            switch (this.width) {
+            case 1:
+                recipe.shape("a","b","c");
+                break;
+            case 2:
+                recipe.shape("ab","cd","ef");
+                break;
+            case 3:
+                recipe.shape("abc","def","ghi");
+                break;
+            }
+            break;
+        }
+        char c = 'a';
+        for (ItemStack stack : this.items) {
+            if (stack != null) {
+                recipe.setIngredient(c, org.bukkit.Material.getMaterial(stack.id), stack.getData());
+            }
+            c++;
+        }
+        return recipe;
+    }
+    // CraftBukkit end
 
     public ItemStack b() {
         return this.result;
@@ -73,10 +135,27 @@ public class ShapedRecipes implements IRecipe {
     }
 
     public ItemStack a(InventoryCrafting inventorycrafting) {
-        return this.b().cloneItemStack();
+        ItemStack itemstack = this.b().cloneItemStack();
+
+        if (this.f) {
+            for (int i = 0; i < inventorycrafting.getSize(); ++i) {
+                ItemStack itemstack1 = inventorycrafting.getItem(i);
+
+                if (itemstack1 != null && itemstack1.hasTag()) {
+                    itemstack.setTag((NBTTagCompound) itemstack1.tag.clone());
+                }
+            }
+        }
+
+        return itemstack;
     }
 
     public int a() {
         return this.width * this.height;
+    }
+
+    public ShapedRecipes c() {
+        this.f = true;
+        return this;
     }
 }

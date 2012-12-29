@@ -1,12 +1,22 @@
 package net.minecraft.server;
 
+// CraftBukkit start
+import org.bukkit.craftbukkit.inventory.CraftInventory;
+import org.bukkit.craftbukkit.inventory.CraftInventoryView;
+// CraftBukkit end
+
 public class ContainerBrewingStand extends Container {
 
     private TileEntityBrewingStand brewingStand;
     private final Slot f;
     private int g = 0;
+    // CraftBukkit start
+    private CraftInventoryView bukkitEntity = null;
+    private PlayerInventory player;
+    // CraftBukkit end
 
     public ContainerBrewingStand(PlayerInventory playerinventory, TileEntityBrewingStand tileentitybrewingstand) {
+        player = playerinventory; // CraftBukkit
         this.brewingStand = tileentitybrewingstand;
         this.a(new SlotPotionBottle(playerinventory.player, tileentitybrewingstand, 0, 56, 46));
         this.a(new SlotPotionBottle(playerinventory.player, tileentitybrewingstand, 1, 79, 53));
@@ -46,6 +56,7 @@ public class ContainerBrewingStand extends Container {
     }
 
     public boolean a(EntityHuman entityhuman) {
+        if (!this.checkReachable) return true; // CraftBukkit
         return this.brewingStand.a_(entityhuman);
     }
 
@@ -100,4 +111,16 @@ public class ContainerBrewingStand extends Container {
 
         return itemstack;
     }
+
+    // CraftBukkit start
+    public CraftInventoryView getBukkitView() {
+        if (bukkitEntity != null) {
+            return bukkitEntity;
+        }
+
+        CraftInventory inventory = new CraftInventory(this.brewingStand);
+        bukkitEntity = new CraftInventoryView(this.player.player.getBukkitEntity(), inventory, this);
+        return bukkitEntity;
+    }
+    // CraftBukkit end
 }

@@ -4,6 +4,8 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Random;
 
+import org.bukkit.event.entity.EntityInteractEvent; // CraftBukkit
+
 public class BlockTripwire extends Block {
 
     public BlockTripwire(int i) {
@@ -74,7 +76,7 @@ public class BlockTripwire extends Block {
 
     public void a(World world, int i, int j, int k, int l, EntityHuman entityhuman) {
         if (!world.isStatic) {
-            if (entityhuman.bT() != null && entityhuman.bT().id == Item.SHEARS.id) {
+            if (entityhuman.bS() != null && entityhuman.bS().id == Item.SHEARS.id) {
                 world.setData(i, j, k, l | 8);
             }
         }
@@ -144,6 +146,34 @@ public class BlockTripwire extends Block {
                 }
             }
         }
+
+        // CraftBukkit start
+        org.bukkit.World bworld = world.getWorld();
+        org.bukkit.plugin.PluginManager manager = world.getServer().getPluginManager();
+
+        if (flag != flag1) {
+            if (flag1) {
+                for (Object object : list) {
+                    if (object != null) {
+                        org.bukkit.event.Cancellable cancellable;
+
+                        if (object instanceof EntityHuman) {
+                            cancellable = org.bukkit.craftbukkit.event.CraftEventFactory.callPlayerInteractEvent((EntityHuman) object, org.bukkit.event.block.Action.PHYSICAL, i, j, k, -1, null);
+                        } else if (object instanceof Entity) {
+                            cancellable = new EntityInteractEvent(((Entity) object).getBukkitEntity(), bworld.getBlockAt(i, j, k));
+                            manager.callEvent((EntityInteractEvent) cancellable);
+                        } else {
+                            continue;
+                        }
+
+                        if (cancellable.isCancelled()) {
+                            return;
+                        }
+                    }
+                }
+            }
+        }
+        // CraftBukkit end
 
         if (flag1 && !flag) {
             l |= 1;

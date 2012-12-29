@@ -2,6 +2,8 @@ package net.minecraft.server;
 
 import java.util.Random;
 
+import org.bukkit.event.entity.EntityInteractEvent; // CraftBukkit
+
 public class BlockRedstoneOre extends Block {
 
     private boolean a;
@@ -25,8 +27,22 @@ public class BlockRedstoneOre extends Block {
     }
 
     public void b(World world, int i, int j, int k, Entity entity) {
-        this.l(world, i, j, k);
-        super.b(world, i, j, k, entity);
+        // CraftBukkit start
+        if (entity instanceof EntityHuman) {
+            org.bukkit.event.player.PlayerInteractEvent event = org.bukkit.craftbukkit.event.CraftEventFactory.callPlayerInteractEvent((EntityHuman) entity, org.bukkit.event.block.Action.PHYSICAL, i, j, k, -1, null);
+            if (!event.isCancelled()) {
+                this.l(world, i, j, k);
+                super.b(world, i, j, k, entity);
+            }
+        } else {
+            EntityInteractEvent event = new EntityInteractEvent(entity.getBukkitEntity(), world.getWorld().getBlockAt(i, j, k));
+            world.getServer().getPluginManager().callEvent(event);
+            if (!event.isCancelled()) {
+                this.l(world, i, j, k);
+                super.b(world, i, j, k, entity);
+            }
+        }
+        // CraftBukkit end
     }
 
     public boolean interact(World world, int i, int j, int k, EntityHuman entityhuman, int l, float f, float f1, float f2) {
@@ -61,11 +77,23 @@ public class BlockRedstoneOre extends Block {
 
     public void dropNaturally(World world, int i, int j, int k, int l, float f, int i1) {
         super.dropNaturally(world, i, j, k, l, f, i1);
+        /* CraftBukkit start - delegate to getExpDrop
         if (this.getDropType(l, world.random, i1) != this.id) {
             int j1 = 1 + world.random.nextInt(5);
 
             this.f(world, i, j, k, j1);
+        } */
+    }
+
+    public int getExpDrop(World world, int l, int i1) {
+        if (this.getDropType(l, world.random, i1) != this.id) {
+            int j1 = 1 + world.random.nextInt(5);
+
+            return j1;
         }
+
+        return 0;
+        // CraftBukkit end
     }
 
     private void n(World world, int i, int j, int k) {

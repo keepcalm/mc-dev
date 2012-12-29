@@ -45,7 +45,8 @@ public class BlockSnow extends Block {
     private boolean n(World world, int i, int j, int k) {
         if (!this.canPlace(world, i, j, k)) {
             this.c(world, i, j, k, world.getData(i, j, k), 0);
-            world.setTypeId(i, j, k, 0);
+            world.setRawTypeId(i, j, k, 0); // CraftBukkit
+            world.notify(i, j, k); // CraftBukkit - Notify clients of the reversion
             return false;
         } else {
             return true;
@@ -70,6 +71,12 @@ public class BlockSnow extends Block {
 
     public void b(World world, int i, int j, int k, Random random) {
         if (world.b(EnumSkyBlock.BLOCK, i, j, k) > 11) {
+            // CraftBukkit start
+            if (org.bukkit.craftbukkit.event.CraftEventFactory.callBlockFadeEvent(world.getWorld().getBlockAt(i, j, k), 0).isCancelled()) {
+                return;
+            }
+            // CraftBukkit end
+
             this.c(world, i, j, k, world.getData(i, j, k), 0);
             world.setTypeId(i, j, k, 0);
         }

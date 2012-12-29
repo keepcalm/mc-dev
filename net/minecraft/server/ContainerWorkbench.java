@@ -1,15 +1,30 @@
 package net.minecraft.server;
 
+// CraftBukkit start
+import org.bukkit.craftbukkit.inventory.CraftInventoryCrafting;
+import org.bukkit.craftbukkit.inventory.CraftInventoryView;
+// CraftBukkit end
+
 public class ContainerWorkbench extends Container {
 
-    public InventoryCrafting craftInventory = new InventoryCrafting(this, 3, 3);
-    public IInventory resultInventory = new InventoryCraftResult();
+    public InventoryCrafting craftInventory; // CraftBukkit - move initialization into constructor
+    public IInventory resultInventory; // CraftBukkit - move initialization into constructor
     private World g;
     private int h;
     private int i;
     private int j;
+    // CraftBukkit start
+    private CraftInventoryView bukkitEntity = null;
+    private PlayerInventory player;
+    // CraftBukkit end
 
     public ContainerWorkbench(PlayerInventory playerinventory, World world, int i, int j, int k) {
+        // CraftBukkit start - switched order of IInventory construction and stored player
+        this.resultInventory = new InventoryCraftResult();
+        this.craftInventory = new InventoryCrafting(this, 3, 3, playerinventory.player); // CraftBukkit - pass player
+        this.craftInventory.resultInventory = this.resultInventory;
+        this.player = playerinventory;
+        // CraftBukkit end
         this.g = world;
         this.h = i;
         this.i = j;
@@ -39,7 +54,17 @@ public class ContainerWorkbench extends Container {
     }
 
     public void a(IInventory iinventory) {
-        this.resultInventory.setItem(0, CraftingManager.getInstance().craft(this.craftInventory, this.g));
+        // CraftBukkit start
+        CraftingManager.getInstance().lastCraftView = getBukkitView();
+        ItemStack craftResult = CraftingManager.getInstance().craft(this.craftInventory, this.g);
+        this.resultInventory.setItem(0, craftResult);
+        if (super.listeners.size() < 1) {
+            return;
+        }
+
+        EntityPlayer player = (EntityPlayer) super.listeners.get(0); // TODO: Is this _always_ correct? Seems like it.
+        player.playerConnection.sendPacket(new Packet103SetSlot(player.activeContainer.windowId, 0, craftResult));
+        // CraftBukkit end
     }
 
     public void b(EntityHuman entityhuman) {
@@ -56,6 +81,7 @@ public class ContainerWorkbench extends Container {
     }
 
     public boolean a(EntityHuman entityhuman) {
+        if (!this.checkReachable) return true; // CraftBukkit
         return this.g.getTypeId(this.h, this.i, this.j) != Block.WORKBENCH.id ? false : entityhuman.e((double) this.h + 0.5D, (double) this.i + 0.5D, (double) this.j + 0.5D) <= 64.0D;
     }
 
@@ -100,4 +126,16 @@ public class ContainerWorkbench extends Container {
 
         return itemstack;
     }
+
+    // CraftBukkit start
+    public CraftInventoryView getBukkitView() {
+        if (bukkitEntity != null) {
+            return bukkitEntity;
+        }
+
+        CraftInventoryCrafting inventory = new CraftInventoryCrafting(this.craftInventory, this.resultInventory);
+        bukkitEntity = new CraftInventoryView(this.player.player.getBukkitEntity(), inventory, this);
+        return bukkitEntity;
+    }
+    // CraftBukkit end
 }

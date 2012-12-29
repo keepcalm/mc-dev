@@ -1,5 +1,7 @@
 package net.minecraft.server;
 
+import org.bukkit.craftbukkit.inventory.CraftItemStack; // CraftBukkit
+
 public class EntityIronGolem extends EntityGolem {
 
     private int e = 0;
@@ -141,19 +143,24 @@ public class EntityIronGolem extends EntityGolem {
     }
 
     protected void dropDeathLoot(boolean flag, int i) {
+        // CraftBukkit start
+        java.util.List<org.bukkit.inventory.ItemStack> loot = new java.util.ArrayList<org.bukkit.inventory.ItemStack>();
         int j = this.random.nextInt(3);
 
         int k;
 
-        for (k = 0; k < j; ++k) {
-            this.b(Block.RED_ROSE.id, 1);
+        if (j > 0) {
+            loot.add(CraftItemStack.asNewCraftStack(Item.byId[Block.RED_ROSE.id], j));
         }
 
         k = 3 + this.random.nextInt(3);
 
-        for (int l = 0; l < k; ++l) {
-            this.b(Item.IRON_INGOT.id, 1);
+        if (k > 0) {
+            loot.add(CraftItemStack.asNewCraftStack(Item.IRON_INGOT, k));
         }
+
+        org.bukkit.craftbukkit.event.CraftEventFactory.callEntityDeathEvent(this, loot);
+        // CraftBukkit end
     }
 
     public int o() {

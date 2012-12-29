@@ -3,9 +3,14 @@ package net.minecraft.server;
 import java.util.Iterator;
 import java.util.List;
 
+// CraftBukkit start
+import org.bukkit.craftbukkit.entity.CraftHumanEntity;
+import org.bukkit.entity.HumanEntity;
+// CraftBukkit end
+
 public class TileEntityChest extends TileEntity implements IInventory {
 
-    private ItemStack[] items = new ItemStack[36];
+    private ItemStack[] items = new ItemStack[27]; // CraftBukkit - 36 -> 27
     public boolean a = false;
     public TileEntityChest b;
     public TileEntityChest c;
@@ -17,6 +22,31 @@ public class TileEntityChest extends TileEntity implements IInventory {
     private int ticks;
 
     public TileEntityChest() {}
+
+    // CraftBukkit start
+    public List<HumanEntity> transaction = new java.util.ArrayList<HumanEntity>();
+    private int maxStack = MAX_STACK;
+
+    public ItemStack[] getContents() {
+        return this.items;
+    }
+
+    public void onOpen(CraftHumanEntity who) {
+        transaction.add(who);
+    }
+
+    public void onClose(CraftHumanEntity who) {
+        transaction.remove(who);
+    }
+
+    public List<HumanEntity> getViewers() {
+        return transaction;
+    }
+
+    public void setMaxStackSize(int size) {
+        maxStack = size;
+    }
+    // CraftBukkit end
 
     public int getSize() {
         return 27;
@@ -107,10 +137,11 @@ public class TileEntityChest extends TileEntity implements IInventory {
     }
 
     public int getMaxStackSize() {
-        return 64;
+        return maxStack; // CraftBukkit
     }
 
     public boolean a_(EntityHuman entityhuman) {
+        if (this.world == null) return true; // CraftBukkit
         return this.world.getTileEntity(this.x, this.y, this.z) != this ? false : entityhuman.e((double) this.x + 0.5D, (double) this.y + 0.5D, (double) this.z + 0.5D) <= 64.0D;
     }
 
@@ -124,28 +155,28 @@ public class TileEntityChest extends TileEntity implements IInventory {
             this.a = false;
         } else if (this.a) {
             switch (i) {
-            case 0:
-                if (this.e != tileentitychest) {
-                    this.a = false;
-                }
-                break;
+                case 0:
+                    if (this.e != tileentitychest) {
+                        this.a = false;
+                    }
+                    break;
 
-            case 1:
-                if (this.d != tileentitychest) {
-                    this.a = false;
-                }
-                break;
+                case 1:
+                    if (this.d != tileentitychest) {
+                        this.a = false;
+                    }
+                    break;
 
-            case 2:
-                if (this.b != tileentitychest) {
-                    this.a = false;
-                }
-                break;
+                case 2:
+                    if (this.b != tileentitychest) {
+                        this.a = false;
+                    }
+                    break;
 
-            case 3:
-                if (this.c != tileentitychest) {
-                    this.a = false;
-                }
+                case 3:
+                    if (this.c != tileentitychest) {
+                        this.a = false;
+                    }
             }
         }
     }
@@ -178,11 +209,11 @@ public class TileEntityChest extends TileEntity implements IInventory {
             }
 
             if (this.e != null) {
-                this.e.a(this, 2);
+                this.e.a(this, 1);
             }
 
             if (this.c != null) {
-                this.c.a(this, 1);
+                this.c.a(this, 2);
             }
 
             if (this.d != null) {
@@ -193,6 +224,7 @@ public class TileEntityChest extends TileEntity implements IInventory {
 
     public void g() {
         super.g();
+        if (this.world == null) return; // CraftBukkit
         this.i();
         ++this.ticks;
         float f;
@@ -279,11 +311,13 @@ public class TileEntityChest extends TileEntity implements IInventory {
 
     public void startOpen() {
         ++this.h;
+        if (this.world == null) return; // CraftBukkit
         this.world.playNote(this.x, this.y, this.z, Block.CHEST.id, 1, this.h);
     }
 
     public void f() {
         --this.h;
+        if (this.world == null) return; // CraftBukkit
         this.world.playNote(this.x, this.y, this.z, Block.CHEST.id, 1, this.h);
     }
 

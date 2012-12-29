@@ -45,7 +45,7 @@ public class Packet51MapChunk extends Packet {
         }
     }
 
-    public void a(DataInputStream datainputstream) {
+    public void a(DataInputStream datainputstream) throws IOException { // CraftBukkit - throws IOException
         this.a = datainputstream.readInt();
         this.b = datainputstream.readInt();
         this.e = datainputstream.readBoolean();
@@ -84,7 +84,7 @@ public class Packet51MapChunk extends Packet {
         }
     }
 
-    public void a(DataOutputStream dataoutputstream) {
+    public void a(DataOutputStream dataoutputstream) throws IOException { // CraftBukkit - throws IOException
         dataoutputstream.writeInt(this.a);
         dataoutputstream.writeInt(this.b);
         dataoutputstream.writeBoolean(this.e);
@@ -94,8 +94,8 @@ public class Packet51MapChunk extends Packet {
         dataoutputstream.write(this.buffer, 0, this.size);
     }
 
-    public void handle(NetHandler nethandler) {
-        nethandler.a(this);
+    public void handle(Connection connection) {
+        connection.a(this);
     }
 
     public int a() {
@@ -152,11 +152,13 @@ public class Packet51MapChunk extends Packet {
             }
         }
 
-        for (l = 0; l < achunksection.length; ++l) {
-            if (achunksection[l] != null && (!flag || !achunksection[l].a()) && (i & 1 << l) != 0) {
-                nibblearray = achunksection[l].l();
-                System.arraycopy(nibblearray.a, 0, abyte, j, nibblearray.a.length);
-                j += nibblearray.a.length;
+        if (!chunk.world.worldProvider.f) {
+            for (l = 0; l < achunksection.length; ++l) {
+                if (achunksection[l] != null && (!flag || !achunksection[l].a()) && (i & 1 << l) != 0) {
+                    nibblearray = achunksection[l].l();
+                    System.arraycopy(nibblearray.a, 0, abyte, j, nibblearray.a.length);
+                    j += nibblearray.a.length;
+                }
             }
         }
 

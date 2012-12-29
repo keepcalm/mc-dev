@@ -5,6 +5,16 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Random;
 
+// CraftBukkit start
+/*
+ * HEAR ME, HE WHOM WISHES TO COMMAND THE UPDATERING
+ *
+ * FOR SOME REASON WE HAVE OUR OWN PORTAL TRAVEL AGENT IN OBC, WE NEED TO UPDATE
+ * THAT WITH ANY NEW UPDATES TO THIS FILE. THIS FILE LEFT HERE AS A REMINDER.
+ *
+ */
+// CraftBukkit end
+
 public class PortalTravelAgent {
 
     private final WorldServer a;

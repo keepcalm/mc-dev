@@ -1,5 +1,7 @@
 package net.minecraft.server;
 
+import org.bukkit.event.block.BlockRedstoneEvent; // CraftBukkit
+
 public class BlockTrapdoor extends Block {
 
     protected BlockTrapdoor(int i, Material material) {
@@ -126,10 +128,21 @@ public class BlockTrapdoor extends Block {
                 this.c(world, i, j, k, i1, 0);
             }
 
-            boolean flag = world.isBlockIndirectlyPowered(i, j, k);
+            // CraftBukkit start
+            if (l == 0 || l > 0 && Block.byId[l] != null && Block.byId[l].isPowerSource()) {
+                org.bukkit.World bworld = world.getWorld();
+                org.bukkit.block.Block block = bworld.getBlockAt(i, j, k);
 
-            if (flag || l > 0 && Block.byId[l].isPowerSource()) {
-                this.setOpen(world, i, j, k, flag);
+                int power = block.getBlockPower();
+                int oldPower = (world.getData(i, j, k) & 4) > 0 ? 15 : 0;
+
+                if (oldPower == 0 ^ power == 0 || (Block.byId[l] != null && Block.byId[l].isPowerSource())) {
+                    BlockRedstoneEvent eventRedstone = new BlockRedstoneEvent(block, oldPower, power);
+                    world.getServer().getPluginManager().callEvent(eventRedstone);
+
+                    this.setOpen(world, i, j, k, eventRedstone.getNewCurrent() > 0);
+                }
+                // CraftBukkit end
             }
         }
     }

@@ -20,4 +20,10 @@ public class EntityDamageSourceIndirect extends EntityDamageSource {
     public String getLocalizedDeathMessage(EntityHuman entityhuman) {
         return LocaleI18n.get("death." + this.translationIndex, new Object[] { entityhuman.name, this.owner == null ? this.r.getLocalizedName() : this.owner.getLocalizedName()});
     }
+
+    // CraftBukkit start
+    public Entity getProximateDamageSource() {
+        return super.getEntity();
+    }
+    // CraftBukkit end
 }

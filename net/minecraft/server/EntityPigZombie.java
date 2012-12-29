@@ -2,15 +2,20 @@ package net.minecraft.server;
 
 import java.util.List;
 
+// CraftBukkit start
+import org.bukkit.craftbukkit.inventory.CraftItemStack;
+import org.bukkit.event.entity.EntityTargetEvent;
+// CraftBukkit end
+
 public class EntityPigZombie extends EntityZombie {
 
-    private int angerLevel = 0;
+    public int angerLevel = 0; // CraftBukkit - private -> public
     private int soundDelay = 0;
 
     public EntityPigZombie(World world) {
         super(world);
         this.texture = "/mob/pigzombie.png";
-        this.bG = 0.5F;
+        this.bH = 0.5F;
         this.fireProof = true;
     }
 
@@ -19,7 +24,7 @@ public class EntityPigZombie extends EntityZombie {
     }
 
     public void j_() {
-        this.bG = this.target != null ? 0.95F : 0.5F;
+        this.bH = this.target != null ? 0.95F : 0.5F;
         if (this.soundDelay > 0 && --this.soundDelay == 0) {
             this.makeSound("mob.zombiepig.zpigangry", this.aX() * 2.0F, ((this.random.nextFloat() - this.random.nextFloat()) * 0.2F + 1.0F) * 1.8F);
         }
@@ -72,6 +77,23 @@ public class EntityPigZombie extends EntityZombie {
     }
 
     private void p(Entity entity) {
+        // CraftBukkit start
+        org.bukkit.entity.Entity bukkitTarget = entity == null ? null : entity.getBukkitEntity();
+
+        EntityTargetEvent event = new EntityTargetEvent(this.getBukkitEntity(), bukkitTarget, EntityTargetEvent.TargetReason.PIG_ZOMBIE_TARGET);
+        this.world.getServer().getPluginManager().callEvent(event);
+
+        if (event.isCancelled()) {
+            return;
+        }
+
+        if (event.getTarget() == null) {
+            this.target = null;
+            return;
+        }
+        entity = ((org.bukkit.craftbukkit.entity.CraftEntity) event.getTarget()).getHandle();
+        // CraftBukkit end
+
         this.target = entity;
         this.angerLevel = 400 + this.random.nextInt(400);
         this.soundDelay = this.random.nextInt(40);
@@ -90,27 +112,43 @@ public class EntityPigZombie extends EntityZombie {
     }
 
     protected void dropDeathLoot(boolean flag, int i) {
+        // CraftBukkit start
+        List<org.bukkit.inventory.ItemStack> loot = new java.util.ArrayList<org.bukkit.inventory.ItemStack>();
         int j = this.random.nextInt(2 + i);
 
-        int k;
-
-        for (k = 0; k < j; ++k) {
-            this.b(Item.ROTTEN_FLESH.id, 1);
+        if (j > 0) {
+            loot.add(CraftItemStack.asNewCraftStack(Item.ROTTEN_FLESH, j));
         }
 
         j = this.random.nextInt(2 + i);
 
-        for (k = 0; k < j; ++k) {
-            this.b(Item.GOLD_NUGGET.id, 1);
+        if (j > 0) {
+            loot.add(CraftItemStack.asNewCraftStack(Item.GOLD_NUGGET, j));
         }
+
+        // Determine rare item drops and add them to the loot
+        if (this.lastDamageByPlayerTime > 0) {
+            int k = this.random.nextInt(200) - i;
+
+            if (k < 5) {
+                ItemStack itemstack = this.l(k <= 0 ? 1 : 0);
+                if (itemstack != null) {
+                    loot.add(CraftItemStack.asCraftMirror(itemstack));
+                }
+            }
+        }
+
+        org.bukkit.craftbukkit.event.CraftEventFactory.callEntityDeathEvent(this, loot);
+        // CraftBukkit end
     }
 
     public boolean a(EntityHuman entityhuman) {
         return false;
     }
 
-    protected void l(int i) {
-        this.b(Item.GOLD_INGOT.id, 1);
+    // CraftBukkit start - return rare dropped item instead of dropping it
+    protected ItemStack l(int i) {
+        return new ItemStack(Item.GOLD_INGOT.id, 1, 0);
     }
 
     protected int getLootId() {

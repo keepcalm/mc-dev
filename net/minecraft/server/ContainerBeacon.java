@@ -1,5 +1,11 @@
 package net.minecraft.server;
 
+// CraftBukkit start
+import org.bukkit.craftbukkit.inventory.CraftInventory;
+import org.bukkit.craftbukkit.inventory.CraftInventoryBeacon;
+import org.bukkit.craftbukkit.inventory.CraftInventoryView;
+// CraftBukkit end
+
 public class ContainerBeacon extends Container {
 
     private TileEntityBeacon a;
@@ -7,8 +13,13 @@ public class ContainerBeacon extends Container {
     private int g;
     private int h;
     private int i;
+    // CraftBukkit start
+    private CraftInventoryView bukkitEntity = null;
+    private PlayerInventory player;
+    // CraftBukkit end
 
     public ContainerBeacon(PlayerInventory playerinventory, TileEntityBeacon tileentitybeacon) {
+        player = playerinventory; // CraftBukkit
         this.a = tileentitybeacon;
         this.a(this.f = new SlotBeacon(this, tileentitybeacon, 0, 136, 110));
         byte b0 = 36;
@@ -47,6 +58,7 @@ public class ContainerBeacon extends Container {
     }
 
     public boolean a(EntityHuman entityhuman) {
+        if (!this.checkReachable) return true; // CraftBukkit
         return this.a.a_(entityhuman);
     }
 
@@ -95,4 +107,16 @@ public class ContainerBeacon extends Container {
 
         return itemstack;
     }
+
+    // CraftBukkit start
+    public CraftInventoryView getBukkitView() {
+        if (bukkitEntity != null) {
+            return bukkitEntity;
+        }
+
+        CraftInventory inventory = new CraftInventoryBeacon(this.a);
+        bukkitEntity = new CraftInventoryView(this.player.player.getBukkitEntity(), inventory, this);
+        return bukkitEntity;
+    }
+    // CraftBukkit end
 }

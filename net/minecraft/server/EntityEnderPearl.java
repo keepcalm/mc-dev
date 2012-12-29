@@ -1,5 +1,11 @@
 package net.minecraft.server;
 
+// CraftBukkit start
+import org.bukkit.Bukkit;
+import org.bukkit.event.entity.EntityDamageByEntityEvent;
+import org.bukkit.event.player.PlayerTeleportEvent;
+// CraftBukkit end
+
 public class EntityEnderPearl extends EntityProjectile {
 
     public EntityEnderPearl(World world) {
@@ -23,10 +29,30 @@ public class EntityEnderPearl extends EntityProjectile {
             if (this.getShooter() != null && this.getShooter() instanceof EntityPlayer) {
                 EntityPlayer entityplayer = (EntityPlayer) this.getShooter();
 
-                if (!entityplayer.netServerHandler.disconnected && entityplayer.world == this.world) {
-                    this.getShooter().enderTeleportTo(this.locX, this.locY, this.locZ);
-                    this.getShooter().fallDistance = 0.0F;
-                    this.getShooter().damageEntity(DamageSource.FALL, 5);
+                if (!entityplayer.playerConnection.disconnected && entityplayer.world == this.world) {
+                    // CraftBukkit start
+                    org.bukkit.craftbukkit.entity.CraftPlayer player = entityplayer.getBukkitEntity();
+                    org.bukkit.Location location = getBukkitEntity().getLocation();
+                    location.setPitch(player.getLocation().getPitch());
+                    location.setYaw(player.getLocation().getYaw());
+
+                    PlayerTeleportEvent teleEvent = new PlayerTeleportEvent(player, player.getLocation(), location, PlayerTeleportEvent.TeleportCause.ENDER_PEARL);
+                    Bukkit.getPluginManager().callEvent(teleEvent);
+
+                    if (!teleEvent.isCancelled() && !entityplayer.playerConnection.disconnected) {
+                        entityplayer.playerConnection.teleport(teleEvent.getTo());
+                        this.getShooter().fallDistance = 0.0F;
+
+                        EntityDamageByEntityEvent damageEvent = new EntityDamageByEntityEvent(this.getBukkitEntity(), player, EntityDamageByEntityEvent.DamageCause.FALL, 5);
+                        Bukkit.getPluginManager().callEvent(damageEvent);
+
+                        if (!damageEvent.isCancelled() && !entityplayer.playerConnection.disconnected) {
+                            entityplayer.invulnerableTicks = -1; // Remove spawning invulnerability
+                            player.setLastDamageCause(damageEvent);
+                            entityplayer.damageEntity(DamageSource.FALL, damageEvent.getDamage());
+                        }
+                    }
+                    // CraftBukkit end
                 }
             }
 

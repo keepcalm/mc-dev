@@ -22,8 +22,13 @@ public abstract class Packet {
     public static long p;
     public static long q;
     public boolean lowPriority = false;
+    // CraftBukkit start - calculate packet ID once - used a bunch of times
+    private int packetID;
 
-    public Packet() {}
+    public Packet() {
+        packetID = ((Integer) a.get(this.getClass())).intValue();
+    }
+    // CraftBukkit end
 
     static void a(int i, boolean flag, boolean flag1, Class oclass) {
         if (l.b(i)) {
@@ -55,12 +60,12 @@ public abstract class Packet {
         }
     }
 
-    public static void a(DataOutputStream dataoutputstream, byte[] abyte) {
+    public static void a(DataOutputStream dataoutputstream, byte[] abyte) throws IOException { // CraftBukkit - throws IOException
         dataoutputstream.writeShort(abyte.length);
         dataoutputstream.write(abyte);
     }
 
-    public static byte[] b(DataInputStream datainputstream) {
+    public static byte[] b(DataInputStream datainputstream) throws IOException { // CraftBukkit - throws IOException
         short short1 = datainputstream.readShort();
 
         if (short1 < 0) {
@@ -74,10 +79,10 @@ public abstract class Packet {
     }
 
     public final int k() {
-        return ((Integer) a.get(this.getClass())).intValue();
+        return packetID; // ((Integer) a.get(this.getClass())).intValue(); // CraftBukkit
     }
 
-    public static Packet a(DataInputStream datainputstream, boolean flag, Socket socket) {
+    public static Packet a(DataInputStream datainputstream, boolean flag, Socket socket) throws IOException { // CraftBukkit - throws IOException
         boolean flag1 = false;
         Packet packet = null;
         int i = socket.getSoTimeout();
@@ -111,6 +116,17 @@ public abstract class Packet {
             return null;
         }
 
+        // CraftBukkit start
+        catch (java.net.SocketTimeoutException exception) {
+            System.out.println("Read timed out");
+            return null;
+        } catch (java.net.SocketException exception) {
+            System.out.println("Connection reset");
+            return null;
+        }
+        // CraftBukkit end
+
+
         PacketCounter.a(j, (long) packet.a());
         ++n;
         o += (long) packet.a();
@@ -118,14 +134,14 @@ public abstract class Packet {
         return packet;
     }
 
-    public static void a(Packet packet, DataOutputStream dataoutputstream) {
+    public static void a(Packet packet, DataOutputStream dataoutputstream) throws IOException { // CraftBukkit - throws IOException
         dataoutputstream.write(packet.k());
         packet.a(dataoutputstream);
         ++p;
         q += (long) packet.a();
     }
 
-    public static void a(String s, DataOutputStream dataoutputstream) {
+    public static void a(String s, DataOutputStream dataoutputstream) throws IOException { // CraftBukkit - throws IOException
         if (s.length() > 32767) {
             throw new IOException("String too big");
         } else {
@@ -134,7 +150,7 @@ public abstract class Packet {
         }
     }
 
-    public static String a(DataInputStream datainputstream, int i) {
+    public static String a(DataInputStream datainputstream, int i) throws IOException { // CraftBukkit - throws IOException
         short short1 = datainputstream.readShort();
 
         if (short1 > i) {
@@ -152,11 +168,11 @@ public abstract class Packet {
         }
     }
 
-    public abstract void a(DataInputStream datainputstream);
+    public abstract void a(DataInputStream datainputstream) throws IOException; // CraftBukkit - throws IOException
 
-    public abstract void a(DataOutputStream dataoutputstream);
+    public abstract void a(DataOutputStream dataoutputstream) throws IOException; // CraftBukkit - throws IOException
 
-    public abstract void handle(NetHandler nethandler);
+    public abstract void handle(Connection connection);
 
     public abstract int a();
 
@@ -178,7 +194,7 @@ public abstract class Packet {
         return s;
     }
 
-    public static ItemStack c(DataInputStream datainputstream) {
+    public static ItemStack c(DataInputStream datainputstream) throws IOException { // CraftBukkit - throws IOException
         ItemStack itemstack = null;
         short short1 = datainputstream.readShort();
 
@@ -193,8 +209,8 @@ public abstract class Packet {
         return itemstack;
     }
 
-    public static void a(ItemStack itemstack, DataOutputStream dataoutputstream) {
-        if (itemstack == null) {
+    public static void a(ItemStack itemstack, DataOutputStream dataoutputstream) throws IOException { // CraftBukkit - throws IOException
+        if (itemstack == null || itemstack.getItem() == null) { // CraftBukkit - NPE fix itemstack.getItem()
             dataoutputstream.writeShort(-1);
         } else {
             dataoutputstream.writeShort(itemstack.id);
@@ -210,7 +226,7 @@ public abstract class Packet {
         }
     }
 
-    public static NBTTagCompound d(DataInputStream datainputstream) {
+    public static NBTTagCompound d(DataInputStream datainputstream) throws IOException { // CraftBukkit - throws IOException
         short short1 = datainputstream.readShort();
 
         if (short1 < 0) {
@@ -223,7 +239,7 @@ public abstract class Packet {
         }
     }
 
-    protected static void a(NBTTagCompound nbttagcompound, DataOutputStream dataoutputstream) {
+    protected static void a(NBTTagCompound nbttagcompound, DataOutputStream dataoutputstream) throws IOException { // CraftBukkit - throws IOException
         if (nbttagcompound == null) {
             dataoutputstream.writeShort(-1);
         } else {
@@ -251,12 +267,11 @@ public abstract class Packet {
         a(13, true, true, Packet13PlayerLookMove.class);
         a(14, false, true, Packet14BlockDig.class);
         a(15, false, true, Packet15Place.class);
-        a(16, false, true, Packet16BlockItemSwitch.class);
+        a(16, true, true, Packet16BlockItemSwitch.class);
         a(17, true, false, Packet17EntityLocationAction.class);
         a(18, true, true, Packet18ArmAnimation.class);
         a(19, false, true, Packet19EntityAction.class);
         a(20, true, false, Packet20NamedEntitySpawn.class);
-        a(21, true, false, Packet21PickupSpawn.class);
         a(22, true, false, Packet22Collect.class);
         a(23, true, false, Packet23VehicleSpawn.class);
         a(24, true, false, Packet24MobSpawn.class);

@@ -6,7 +6,7 @@ public class EntityMagmaCube extends EntitySlime {
         super(world);
         this.texture = "/mob/lava.png";
         this.fireProof = true;
-        this.aM = 0.2F;
+        this.aN = 0.2F;
     }
 
     public boolean canSpawn() {
@@ -34,6 +34,8 @@ public class EntityMagmaCube extends EntitySlime {
     }
 
     protected void dropDeathLoot(boolean flag, int i) {
+        // CraftBukkit start - whole method
+        java.util.List<org.bukkit.inventory.ItemStack> loot = new java.util.ArrayList<org.bukkit.inventory.ItemStack>();
         int j = this.getLootId();
 
         if (j > 0 && this.getSize() > 1) {
@@ -43,10 +45,13 @@ public class EntityMagmaCube extends EntitySlime {
                 k += this.random.nextInt(i + 1);
             }
 
-            for (int l = 0; l < k; ++l) {
-                this.b(j, 1);
+            if (k > 0) {
+                loot.add(new org.bukkit.inventory.ItemStack(j, k));
             }
         }
+
+        org.bukkit.craftbukkit.event.CraftEventFactory.callEntityDeathEvent(this, loot);
+        // CraftBukkit end
     }
 
     public boolean isBurning() {

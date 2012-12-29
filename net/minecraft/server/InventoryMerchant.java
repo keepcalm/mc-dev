@@ -1,5 +1,11 @@
 package net.minecraft.server;
 
+// CraftBukkit start
+import java.util.List;
+import org.bukkit.craftbukkit.entity.CraftHumanEntity;
+import org.bukkit.entity.HumanEntity;
+// CraftBukkit end
+
 public class InventoryMerchant implements IInventory {
 
     private final IMerchant merchant;
@@ -7,6 +13,35 @@ public class InventoryMerchant implements IInventory {
     private final EntityHuman player;
     private MerchantRecipe recipe;
     private int e;
+
+    // CraftBukkit start
+    public List<HumanEntity> transaction = new java.util.ArrayList<HumanEntity>();
+    private int maxStack = MAX_STACK;
+
+    public ItemStack[] getContents() {
+        return this.itemsInSlots;
+    }
+
+    public void onOpen(CraftHumanEntity who) {
+        transaction.add(who);
+    }
+
+    public void onClose(CraftHumanEntity who) {
+        transaction.remove(who);
+    }
+
+    public List<HumanEntity> getViewers() {
+        return transaction;
+    }
+
+    public void setMaxStackSize(int i) {
+        maxStack = i;
+    }
+
+    public org.bukkit.inventory.InventoryHolder getOwner() {
+        return player.getBukkitEntity();
+    }
+    // CraftBukkit end
 
     public InventoryMerchant(EntityHuman entityhuman, IMerchant imerchant) {
         this.player = entityhuman;
@@ -85,7 +120,7 @@ public class InventoryMerchant implements IInventory {
     }
 
     public int getMaxStackSize() {
-        return 64;
+        return maxStack; // CraftBukkit
     }
 
     public boolean a_(EntityHuman entityhuman) {

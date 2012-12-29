@@ -372,7 +372,8 @@ public class Block {
             int j1 = this.getDropCount(i1, world.random);
 
             for (int k1 = 0; k1 < j1; ++k1) {
-                if (world.random.nextFloat() <= f) {
+                // CraftBukkit - <= to < to allow for plugins to completely disable block drops from explosions
+                if (world.random.nextFloat() < f) {
                     int l1 = this.getDropType(l, world.random, i1);
 
                     if (l1 > 0) {
@@ -704,6 +705,11 @@ public class Block {
         Item.byId[PISTON_STICKY.id] = new ItemPiston(PISTON_STICKY.id - 256);
         Item.byId[COBBLE_WALL.id] = (new ItemMultiTexture(COBBLE_WALL.id - 256, COBBLE_WALL, BlockCobbleWall.a)).b("cobbleWall");
         Item.byId[ANVIL.id] = (new ItemAnvil(ANVIL)).b("anvil");
+        // CraftBukkit start
+        Item.byId[BIG_MUSHROOM_1.id] = new ItemWithAuxData(BIG_MUSHROOM_1.id - 256, true);
+        Item.byId[BIG_MUSHROOM_2.id] = new ItemWithAuxData(BIG_MUSHROOM_2.id - 256, true);
+        Item.byId[MOB_SPAWNER.id] = new ItemWithAuxData(MOB_SPAWNER.id - 256, true);
+        // CraftBukkit end
 
         for (int i = 0; i < 256; ++i) {
             if (byId[i] != null) {
@@ -741,4 +747,10 @@ public class Block {
         s[0] = true;
         StatisticList.b();
     }
+
+    // CraftBukkit start
+    public int getExpDrop(World world, int data, int enchantmentLevel) {
+        return 0;
+    }
+    // CraftBukkit end
 }

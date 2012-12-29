@@ -1,5 +1,11 @@
 package net.minecraft.server;
 
+// CraftBukkit start
+import org.bukkit.Location;
+import org.bukkit.craftbukkit.event.CraftEventFactory;
+import org.bukkit.event.entity.EntityTeleportEvent;
+// CraftBukkit end
+
 public class EntityEnderman extends EntityMonster {
 
     private static boolean[] d = new boolean[256];
@@ -9,7 +15,7 @@ public class EntityEnderman extends EntityMonster {
     public EntityEnderman(World world) {
         super(world);
         this.texture = "/mob/enderman.png";
-        this.bG = 0.2F;
+        this.bH = 0.2F;
         this.a(0.6F, 2.9F);
         this.X = 1.0F;
     }
@@ -81,7 +87,7 @@ public class EntityEnderman extends EntityMonster {
             this.damageEntity(DamageSource.DROWN, 1);
         }
 
-        this.bG = this.target != null ? 6.5F : 0.3F;
+        this.bH = this.target != null ? 6.5F : 0.3F;
         int i;
 
         if (!this.world.isStatic && this.world.getGameRules().getBoolean("mobGriefing")) {
@@ -96,9 +102,13 @@ public class EntityEnderman extends EntityMonster {
                     k = MathHelper.floor(this.locZ - 2.0D + this.random.nextDouble() * 4.0D);
                     l = this.world.getTypeId(i, j, k);
                     if (d[l]) {
-                        this.setCarriedId(this.world.getTypeId(i, j, k));
-                        this.setCarriedData(this.world.getData(i, j, k));
-                        this.world.setTypeId(i, j, k, 0);
+                        // CraftBukkit start - pickup event
+                        if (!CraftEventFactory.callEntityChangeBlockEvent(this, this.world.getWorld().getBlockAt(i, j, k), org.bukkit.Material.AIR).isCancelled()) {
+                            this.setCarriedId(this.world.getTypeId(i, j, k));
+                            this.setCarriedData(this.world.getData(i, j, k));
+                            this.world.setTypeId(i, j, k, 0);
+                        }
+                        // CraftBukkit end
                     }
                 }
             } else if (this.random.nextInt(2000) == 0) {
@@ -109,8 +119,12 @@ public class EntityEnderman extends EntityMonster {
                 int i1 = this.world.getTypeId(i, j - 1, k);
 
                 if (l == 0 && i1 > 0 && Block.byId[i1].b()) {
-                    this.world.setTypeIdAndData(i, j, k, this.getCarriedId(), this.getCarriedData());
-                    this.setCarriedId(0);
+                    // CraftBukkit start - place event
+                    if (!CraftEventFactory.callEntityChangeBlockEvent(this, i, j, k, this.getCarriedId(), this.getCarriedData()).isCancelled()) {
+                        this.world.setTypeIdAndData(i, j, k, this.getCarriedId(), this.getCarriedData());
+                        this.setCarriedId(0);
+                    }
+                    // CraftBukkit end
                 }
             }
         }
@@ -129,13 +143,13 @@ public class EntityEnderman extends EntityMonster {
             }
         }
 
-        if (this.G()) {
+        if (this.G() || this.isBurning()) {
             this.target = null;
             this.f(false);
             this.m();
         }
 
-        this.bE = false;
+        this.bF = false;
         if (this.target != null) {
             this.a(this.target, 100.0F, 100.0F);
         }
@@ -143,8 +157,8 @@ public class EntityEnderman extends EntityMonster {
         if (!this.world.isStatic && this.isAlive()) {
             if (this.target != null) {
                 if (this.target instanceof EntityHuman && this.d((EntityHuman) this.target)) {
-                    this.bB = this.bC = 0.0F;
-                    this.bG = 0.0F;
+                    this.bC = this.bD = 0.0F;
+                    this.bH = 0.0F;
                     if (this.target.e((Entity) this) < 16.0D) {
                         this.m();
                     }
@@ -210,7 +224,17 @@ public class EntityEnderman extends EntityMonster {
             }
 
             if (flag1) {
-                this.setPosition(this.locX, this.locY, this.locZ);
+                // CraftBukkit start - teleport event
+                EntityTeleportEvent teleport = new EntityTeleportEvent(this.getBukkitEntity(), new Location(this.world.getWorld(), d3, d4, d5), new Location(this.world.getWorld(), this.locX, this.locY, this.locZ));
+                this.world.getServer().getPluginManager().callEvent(teleport);
+                if (teleport.isCancelled()) {
+                    return false;
+                }
+
+                Location to = teleport.getTo();
+                this.setPosition(to.getX(), to.getY(), to.getZ());
+                // CraftBukkit end
+
                 if (this.world.getCubes(this, this.boundingBox).isEmpty() && !this.world.containsLiquid(this.boundingBox)) {
                     flag = true;
                 }
@@ -261,11 +285,16 @@ public class EntityEnderman extends EntityMonster {
         int j = this.getLootId();
 
         if (j > 0) {
-            int k = this.random.nextInt(2 + i);
+            // CraftBukkit start - whole method
+            java.util.List<org.bukkit.inventory.ItemStack> loot = new java.util.ArrayList<org.bukkit.inventory.ItemStack>();
+            int count = this.random.nextInt(2 + i);
 
-            for (int l = 0; l < k; ++l) {
-                this.b(j, 1);
+            if ((j > 0) && (count > 0)) {
+                loot.add(new org.bukkit.inventory.ItemStack(j, count));
             }
+
+            CraftEventFactory.callEntityDeathEvent(this, loot);
+            // CraftBukkit end
         }
     }
 
@@ -288,20 +317,19 @@ public class EntityEnderman extends EntityMonster {
     public boolean damageEntity(DamageSource damagesource, int i) {
         if (this.isInvulnerable()) {
             return false;
-        } else if (damagesource instanceof EntityDamageSourceIndirect) {
-            for (int j = 0; j < 64; ++j) {
-                if (this.m()) {
-                    return true;
-                }
-            }
-
-            return false;
         } else {
-            if (damagesource.getEntity() instanceof EntityHuman) {
-                this.f(true);
-            }
+            this.f(true);
+            if (damagesource instanceof EntityDamageSourceIndirect) {
+                for (int j = 0; j < 64; ++j) {
+                    if (this.m()) {
+                        return true;
+                    }
+                }
 
-            return super.damageEntity(damagesource, i);
+                return false;
+            } else {
+                return super.damageEntity(damagesource, i);
+            }
         }
     }
 

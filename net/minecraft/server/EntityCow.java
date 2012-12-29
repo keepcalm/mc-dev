@@ -1,5 +1,10 @@
 package net.minecraft.server;
 
+// CraftBukkit start
+import org.bukkit.craftbukkit.event.CraftEventFactory;
+import org.bukkit.craftbukkit.inventory.CraftItemStack;
+// CraftBukkit end
+
 public class EntityCow extends EntityAnimal {
 
     public EntityCow(World world) {
@@ -50,34 +55,44 @@ public class EntityCow extends EntityAnimal {
     }
 
     protected void dropDeathLoot(boolean flag, int i) {
+        // CraftBukkit start - whole method
+        java.util.List<org.bukkit.inventory.ItemStack> loot = new java.util.ArrayList<org.bukkit.inventory.ItemStack>();
         int j = this.random.nextInt(3) + this.random.nextInt(1 + i);
 
         int k;
 
-        for (k = 0; k < j; ++k) {
-            this.b(Item.LEATHER.id, 1);
+        if (j > 0) {
+            loot.add(new org.bukkit.inventory.ItemStack(Item.LEATHER.id, j));
         }
 
         j = this.random.nextInt(3) + 1 + this.random.nextInt(1 + i);
 
-        for (k = 0; k < j; ++k) {
-            if (this.isBurning()) {
-                this.b(Item.COOKED_BEEF.id, 1);
-            } else {
-                this.b(Item.RAW_BEEF.id, 1);
-            }
+        if (j > 0) {
+            loot.add(new org.bukkit.inventory.ItemStack(this.isBurning() ? Item.COOKED_BEEF.id : Item.RAW_BEEF.id, j));
         }
+
+        CraftEventFactory.callEntityDeathEvent(this, loot);
+        // CraftBukkit end
     }
 
     public boolean a(EntityHuman entityhuman) {
         ItemStack itemstack = entityhuman.inventory.getItemInHand();
 
         if (itemstack != null && itemstack.id == Item.BUCKET.id) {
-            if (--itemstack.count <= 0) {
-                entityhuman.inventory.setItem(entityhuman.inventory.itemInHandIndex, new ItemStack(Item.MILK_BUCKET));
-            } else if (!entityhuman.inventory.pickup(new ItemStack(Item.MILK_BUCKET))) {
-                entityhuman.drop(new ItemStack(Item.MILK_BUCKET.id, 1, 0));
+            // CraftBukkit start - got milk?
+            org.bukkit.Location loc = this.getBukkitEntity().getLocation();
+            org.bukkit.event.player.PlayerBucketFillEvent event = CraftEventFactory.callPlayerBucketFillEvent(entityhuman, loc.getBlockX(), loc.getBlockY(), loc.getBlockZ(), -1, itemstack, Item.MILK_BUCKET);
+
+            if (event.isCancelled()) {
+                return false;
             }
+
+            if (--itemstack.count <= 0) {
+                entityhuman.inventory.setItem(entityhuman.inventory.itemInHandIndex, CraftItemStack.asNMSCopy(event.getItemStack()));
+            } else if (!entityhuman.inventory.pickup(new ItemStack(Item.MILK_BUCKET))) {
+                entityhuman.drop(CraftItemStack.asNMSCopy(event.getItemStack()));
+            }
+            // CraftBukkit end
 
             return true;
         } else {

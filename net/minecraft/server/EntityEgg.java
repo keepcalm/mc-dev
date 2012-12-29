@@ -1,5 +1,12 @@
 package net.minecraft.server;
 
+// CraftBukkit start
+import org.bukkit.entity.Ageable;
+import org.bukkit.entity.EntityType;
+import org.bukkit.entity.Player;
+import org.bukkit.event.player.PlayerEggThrowEvent;
+// CraftBukkit end
+
 public class EntityEgg extends EntityProjectile {
 
     public EntityEgg(World world) {
@@ -19,21 +26,36 @@ public class EntityEgg extends EntityProjectile {
             movingobjectposition.entity.damageEntity(DamageSource.projectile(this, this.getShooter()), 0);
         }
 
-        if (!this.world.isStatic && this.random.nextInt(8) == 0) {
-            byte b0 = 1;
+        // CraftBukkit start
+        boolean hatching = !this.world.isStatic && this.random.nextInt(8) == 0;
+        int numHatching = (this.random.nextInt(32) == 0) ? 4 : 1;
+        if (!hatching) {
+            numHatching = 0;
+        }
 
-            if (this.random.nextInt(32) == 0) {
-                b0 = 4;
-            }
+        EntityType hatchingType = EntityType.CHICKEN;
 
-            for (int i = 0; i < b0; ++i) {
-                EntityChicken entitychicken = new EntityChicken(this.world);
+        Entity shooter = this.getShooter();
+        if (shooter instanceof EntityPlayer) {
+            Player player = (shooter == null) ? null : (Player) shooter.getBukkitEntity();
 
-                entitychicken.setAge(-24000);
-                entitychicken.setPositionRotation(this.locX, this.locY, this.locZ, this.yaw, 0.0F);
-                this.world.addEntity(entitychicken);
+            PlayerEggThrowEvent event = new PlayerEggThrowEvent(player, (org.bukkit.entity.Egg) this.getBukkitEntity(), hatching, (byte) numHatching, hatchingType);
+            this.world.getServer().getPluginManager().callEvent(event);
+
+            hatching = event.isHatching();
+            numHatching = event.getNumHatches();
+            hatchingType = event.getHatchingType();
+        }
+
+        if (hatching) {
+            for (int k = 0; k < numHatching; k++) {
+                org.bukkit.entity.Entity entity = world.getWorld().spawn(new org.bukkit.Location(world.getWorld(), this.locX, this.locY, this.locZ, this.yaw, 0.0F), hatchingType.getEntityClass(), org.bukkit.event.entity.CreatureSpawnEvent.SpawnReason.EGG);
+                if (entity instanceof Ageable) {
+                    ((Ageable) entity).setBaby();
+                }
             }
         }
+        // CraftBukkit end
 
         for (int j = 0; j < 8; ++j) {
             this.world.addParticle("snowballpoof", this.locX, this.locY, this.locZ, 0.0D, 0.0D, 0.0D);

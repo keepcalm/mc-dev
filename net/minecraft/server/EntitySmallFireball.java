@@ -1,5 +1,10 @@
 package net.minecraft.server;
 
+// CraftBukkit start
+import org.bukkit.event.block.BlockIgniteEvent;
+import org.bukkit.event.entity.EntityCombustByEntityEvent;
+// CraftBukkit end
+
 public class EntitySmallFireball extends EntityFireball {
 
     public EntitySmallFireball(World world) {
@@ -21,7 +26,14 @@ public class EntitySmallFireball extends EntityFireball {
         if (!this.world.isStatic) {
             if (movingobjectposition.entity != null) {
                 if (!movingobjectposition.entity.isFireproof() && movingobjectposition.entity.damageEntity(DamageSource.fireball(this, this.shooter), 5)) {
-                    movingobjectposition.entity.setOnFire(5);
+                    // CraftBukkit start - entity damage by entity event + combust event
+                    EntityCombustByEntityEvent event = new EntityCombustByEntityEvent((org.bukkit.entity.Projectile) this.getBukkitEntity(), movingobjectposition.entity.getBukkitEntity(), 5);
+                    movingobjectposition.entity.world.getServer().getPluginManager().callEvent(event);
+
+                    if (!event.isCancelled()) {
+                        movingobjectposition.entity.setOnFire(event.getDuration());
+                    }
+                    // CraftBukkit end
                 }
             } else {
                 int i = movingobjectposition.b;
@@ -54,7 +66,15 @@ public class EntitySmallFireball extends EntityFireball {
                 }
 
                 if (this.world.isEmpty(i, j, k)) {
-                    this.world.setTypeId(i, j, k, Block.FIRE.id);
+                    // CraftBukkit start
+                    org.bukkit.block.Block block = world.getWorld().getBlockAt(i, j, k);
+                    BlockIgniteEvent event = new BlockIgniteEvent(block, BlockIgniteEvent.IgniteCause.FIREBALL, null);
+                    world.getServer().getPluginManager().callEvent(event);
+
+                    if (!event.isCancelled()) {
+                        this.world.setTypeId(i, j, k, Block.FIRE.id);
+                    }
+                    // CraftBukkit end
                 }
             }
 

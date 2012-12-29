@@ -6,14 +6,14 @@ import java.util.Map;
 public class RecipesFurnace {
 
     private static final RecipesFurnace a = new RecipesFurnace();
-    private Map recipes = new HashMap();
+    public Map recipes = new HashMap(); // CraftBukkit - private -> public
     private Map c = new HashMap();
 
     public static final RecipesFurnace getInstance() {
         return a;
     }
 
-    private RecipesFurnace() {
+    public RecipesFurnace() { // CraftBukkit - private -> public
         this.registerRecipe(Block.IRON_ORE.id, new ItemStack(Item.IRON_INGOT), 0.7F);
         this.registerRecipe(Block.GOLD_ORE.id, new ItemStack(Item.GOLD_INGOT), 1.0F);
         this.registerRecipe(Block.DIAMOND_ORE.id, new ItemStack(Item.DIAMOND), 1.0F);

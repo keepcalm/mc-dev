@@ -2,11 +2,19 @@ package net.minecraft.server;
 
 import java.util.Random;
 
-public class WorldGenTaiga1 extends WorldGenerator {
+import org.bukkit.BlockChangeDelegate; // CraftBukkit
+
+public class WorldGenTaiga1 extends WorldGenerator implements BlockSapling.TreeGenerator { // CraftBukkit add interface
 
     public WorldGenTaiga1() {}
 
     public boolean a(World world, Random random, int i, int j, int k) {
+        // CraftBukkit start - moved to generate
+        return this.generate((BlockChangeDelegate) world, random, i, j, k);
+    }
+
+    public boolean generate(BlockChangeDelegate world, Random random, int i, int j, int k) {
+        // CraftBukkit end
         int l = random.nextInt(5) + 7;
         int i1 = l - random.nextInt(2) - 3;
         int j1 = l - i1;

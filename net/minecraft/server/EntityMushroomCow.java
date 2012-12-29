@@ -1,5 +1,7 @@
 package net.minecraft.server;
 
+import org.bukkit.event.player.PlayerShearEntityEvent; // CraftBukkit
+
 public class EntityMushroomCow extends EntityCow {
 
     public EntityMushroomCow(World world) {
@@ -24,6 +26,15 @@ public class EntityMushroomCow extends EntityCow {
         }
 
         if (itemstack != null && itemstack.id == Item.SHEARS.id && this.getAge() >= 0) {
+            // CraftBukkit start
+            PlayerShearEntityEvent event = new PlayerShearEntityEvent((org.bukkit.entity.Player) entityhuman.getBukkitEntity(), this.getBukkitEntity());
+            this.world.getServer().getPluginManager().callEvent(event);
+
+            if (event.isCancelled()) {
+                return false;
+            }
+            // CraftBukkit end
+
             this.die();
             this.world.addParticle("largeexplode", this.locX, this.locY + (double) (this.length / 2.0F), this.locZ, 0.0D, 0.0D, 0.0D);
             if (!this.world.isStatic) {
@@ -31,7 +42,7 @@ public class EntityMushroomCow extends EntityCow {
 
                 entitycow.setPositionRotation(this.locX, this.locY, this.locZ, this.yaw, this.pitch);
                 entitycow.setHealth(this.getHealth());
-                entitycow.aw = this.aw;
+                entitycow.ax = this.ax;
                 this.world.addEntity(entitycow);
 
                 for (int i = 0; i < 5; ++i) {

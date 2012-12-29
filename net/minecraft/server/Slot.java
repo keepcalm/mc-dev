@@ -2,7 +2,7 @@ package net.minecraft.server;
 
 public class Slot {
 
-    private final int index;
+    public final int index; // CraftBukkit - private -> public
     public final IInventory inventory;
     public int g;
     public int h;

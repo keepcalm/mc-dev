@@ -2,6 +2,12 @@ package net.minecraft.server;
 
 import java.util.List;
 
+// CraftBukkit start
+import org.bukkit.craftbukkit.block.CraftBlock;
+import org.bukkit.event.block.BlockPistonRetractEvent;
+import org.bukkit.event.block.BlockPistonExtendEvent;
+// CraftBukkit end
+
 public class BlockPiston extends Block {
 
     private boolean a;
@@ -61,10 +67,31 @@ public class BlockPiston extends Block {
             boolean flag = this.d(world, i, j, k, i1);
 
             if (flag && !f(l)) {
-                if (i(world, i, j, k, i1)) {
+                // CraftBukkit start
+                int length = i(world, i, j, k, i1);
+                if (length >= 0) {
+                    org.bukkit.block.Block block = world.getWorld().getBlockAt(i, j, k);
+                    BlockPistonExtendEvent event = new BlockPistonExtendEvent(block, length, CraftBlock.notchToBlockFace(i1));
+                    world.getServer().getPluginManager().callEvent(event);
+
+                    if (event.isCancelled()) {
+                        return;
+                    }
+                    // CraftBukkit end
+
                     world.playNote(i, j, k, this.id, 0, i1);
                 }
             } else if (!flag && f(l)) {
+                // CraftBukkit start
+                org.bukkit.block.Block block = world.getWorld().getBlockAt(i, j, k);
+                BlockPistonRetractEvent event = new BlockPistonRetractEvent(block, CraftBlock.notchToBlockFace(i1));
+                world.getServer().getPluginManager().callEvent(event);
+
+                if (event.isCancelled()) {
+                    return;
+                }
+                // CraftBukkit end
+
                 world.playNote(i, j, k, this.id, 1, i1);
             }
         }
@@ -190,6 +217,7 @@ public class BlockPiston extends Block {
     }
 
     public static int e(int i) {
+        if ((i & 7) >= Facing.OPPOSITE_FACING.length) return 0; // CraftBukkit - check for AIOOB on piston data
         return i & 7;
     }
 
@@ -239,7 +267,8 @@ public class BlockPiston extends Block {
         }
     }
 
-    private static boolean i(World world, int i, int j, int k, int l) {
+    // CraftBukkit - boolean -> int return
+    private static int i(World world, int i, int j, int k, int l) {
         int i1 = i + Facing.b[l];
         int j1 = j + Facing.c[l];
         int k1 = k + Facing.d[l];
@@ -248,19 +277,19 @@ public class BlockPiston extends Block {
         while (true) {
             if (l1 < 13) {
                 if (j1 <= 0 || j1 >= 255) {
-                    return false;
+                    return -1; // CraftBukkit
                 }
 
                 int i2 = world.getTypeId(i1, j1, k1);
 
                 if (i2 != 0) {
                     if (!a(i2, world, i1, j1, k1, true)) {
-                        return false;
+                        return -1; // CraftBukkit
                     }
 
                     if (Block.byId[i2].q_() != 1) {
                         if (l1 == 12) {
-                            return false;
+                            return -1; // CraftBukkit
                         }
 
                         i1 += Facing.b[l];
@@ -272,7 +301,7 @@ public class BlockPiston extends Block {
                 }
             }
 
-            return true;
+            return l1; // CraftBukkit
         }
     }
 

@@ -4,11 +4,13 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.Callable;
 
+import org.bukkit.inventory.InventoryHolder; // CraftBukkit
+
 public class TileEntity {
 
     private static Map a = new HashMap();
     private static Map b = new HashMap();
-    protected World world;
+    public World world; // CraftBukkit - protected -> public
     public int x;
     public int y;
     public int z;
@@ -150,4 +152,12 @@ public class TileEntity {
         a(TileEntityBeacon.class, "Beacon");
         a(TileEntitySkull.class, "Skull");
     }
+
+    // CraftBukkit start
+    public InventoryHolder getOwner() {
+        org.bukkit.block.BlockState state = world.getWorld().getBlockAt(x, y, z).getState();
+        if (state instanceof InventoryHolder) return (InventoryHolder) state;
+        return null;
+    }
+    // CraftBukkit end
 }

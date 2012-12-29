@@ -41,19 +41,24 @@ public class WorldMapHumanTracker {
             int i;
             int j;
 
+            org.bukkit.craftbukkit.map.RenderData render = this.worldMap.mapView.render((org.bukkit.craftbukkit.entity.CraftPlayer) trackee.getBukkitEntity()); // CraftBukkit
+
             if (--this.g < 0) {
                 this.g = 4;
-                abyte = new byte[this.worldMap.g.size() * 3 + 1];
+                abyte = new byte[render.cursors.size() * 3 + 1]; // CraftBukkit
                 abyte[0] = 1;
                 i = 0;
 
-                for (Iterator iterator = this.worldMap.g.values().iterator(); iterator.hasNext(); ++i) {
-                    WorldMapDecoration worldmapdecoration = (WorldMapDecoration) iterator.next();
+                // CraftBukkit start
+                for (i = 0; i < render.cursors.size(); ++i) {
+                    org.bukkit.map.MapCursor cursor = render.cursors.get(i);
+                    if (!cursor.isVisible()) continue;
 
-                    abyte[i * 3 + 1] = (byte) (worldmapdecoration.type << 4 | worldmapdecoration.rotation & 15);
-                    abyte[i * 3 + 2] = worldmapdecoration.locX;
-                    abyte[i * 3 + 3] = worldmapdecoration.locY;
+                    abyte[i * 3 + 1] = (byte) (cursor.getRawType() << 4 | cursor.getDirection() & 15);
+                    abyte[i * 3 + 2] = (byte) cursor.getX();
+                    abyte[i * 3 + 3] = (byte) cursor.getY();
                 }
+                // CraftBukkit end
 
                 boolean flag = !itemstack.y();
 
@@ -87,7 +92,7 @@ public class WorldMapHumanTracker {
                     abyte1[2] = (byte) j;
 
                     for (int i1 = 0; i1 < abyte1.length - 3; ++i1) {
-                        abyte1[i1 + 3] = this.worldMap.colors[(i1 + j) * 128 + i];
+                        abyte1[i1 + 3] = render.buffer[(i1 + j) * 128 + i]; // CraftBukkit
                     }
 
                     this.c[i] = -1;

@@ -2,14 +2,45 @@ package net.minecraft.server;
 
 import java.util.List;
 
+// CraftBukkit start
+import org.bukkit.craftbukkit.entity.CraftHumanEntity;
+import org.bukkit.entity.HumanEntity;
+import org.bukkit.event.inventory.BrewEvent;
+// CraftBukkit end
+
 public class TileEntityBrewingStand extends TileEntity implements IInventory {
 
-    private ItemStack[] items = new ItemStack[4];
-    private int brewTime;
+    public ItemStack[] items = new ItemStack[4]; // CraftBukkit private -> public
+    public int brewTime; // CraftBukkit private -> public
     private int c;
     private int d;
 
     public TileEntityBrewingStand() {}
+
+    // CraftBukkit start
+    public List<HumanEntity> transaction = new java.util.ArrayList<HumanEntity>();
+    private int maxStack = 1;
+
+    public void onOpen(CraftHumanEntity who) {
+        transaction.add(who);
+    }
+
+    public void onClose(CraftHumanEntity who) {
+        transaction.remove(who);
+    }
+
+    public List<HumanEntity> getViewers() {
+        return transaction;
+    }
+
+    public ItemStack[] getContents() {
+        return this.items;
+    }
+
+    public void setMaxStackSize(int size) {
+        maxStack = size;
+    }
+    // CraftBukkit end
 
     public String getName() {
         return "container.brewing";
@@ -90,6 +121,16 @@ public class TileEntityBrewingStand extends TileEntity implements IInventory {
     private void u() {
         if (this.k()) {
             ItemStack itemstack = this.items[3];
+
+            // CraftBukkit start - fire BREW event
+            if (getOwner() != null) {
+                BrewEvent event = new BrewEvent(world.getWorld().getBlockAt(x, y, z), (org.bukkit.inventory.BrewerInventory) this.getOwner().getInventory());
+                org.bukkit.Bukkit.getPluginManager().callEvent(event);
+                if(event.isCancelled()) {
+                    return;
+                }
+            }
+            // CraftBukkit end
 
             for (int i = 0; i < 3; ++i) {
                 if (this.items[i] != null && this.items[i].id == Item.POTION.id) {
@@ -192,7 +233,7 @@ public class TileEntityBrewingStand extends TileEntity implements IInventory {
     }
 
     public int getMaxStackSize() {
-        return 1;
+        return this.maxStack; // CraftBukkit
     }
 
     public boolean a_(EntityHuman entityhuman) {

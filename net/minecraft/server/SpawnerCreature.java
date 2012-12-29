@@ -6,9 +6,15 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Random;
 
+// CraftBukkit start
+import org.bukkit.craftbukkit.util.LongHash;
+import org.bukkit.craftbukkit.util.LongObjectHashMap;
+import org.bukkit.event.entity.CreatureSpawnEvent.SpawnReason;
+// CraftBukkit end
+
 public final class SpawnerCreature {
 
-    private static HashMap b = new HashMap();
+    private static LongObjectHashMap<Boolean> b = new LongObjectHashMap<Boolean>(); // CraftBukkit - HashMap -> LongObjectHashMap
     protected static final Class[] a = new Class[] { EntitySpider.class, EntityZombie.class, EntitySkeleton.class};
 
     protected static ChunkPosition getRandomPosition(World world, int i, int j) {
@@ -39,13 +45,16 @@ public final class SpawnerCreature {
                 for (int l = -b0; l <= b0; ++l) {
                     for (int i1 = -b0; i1 <= b0; ++i1) {
                         boolean flag3 = l == -b0 || l == b0 || i1 == -b0 || i1 == b0;
-                        ChunkCoordIntPair chunkcoordintpair = new ChunkCoordIntPair(l + k, i1 + j);
+
+                        // CraftBukkit start
+                        long chunkCoords = LongHash.toLong(l + k, i1 + j);
 
                         if (!flag3) {
-                            b.put(chunkcoordintpair, Boolean.valueOf(false));
-                        } else if (!b.containsKey(chunkcoordintpair)) {
-                            b.put(chunkcoordintpair, Boolean.valueOf(true));
+                            b.put(chunkCoords, false);
+                        } else if (!b.containsKey(chunkCoords)) {
+                            b.put(chunkCoords, true);
                         }
+                        // CraftBukkit end
                     }
                 }
             }
@@ -59,15 +68,39 @@ public final class SpawnerCreature {
             for (int j1 = 0; j1 < j; ++j1) {
                 EnumCreatureType enumcreaturetype = aenumcreaturetype[j1];
 
-                if ((!enumcreaturetype.d() || flag1) && (enumcreaturetype.d() || flag) && (!enumcreaturetype.e() || flag2) && worldserver.a(enumcreaturetype.a()) <= enumcreaturetype.b() * b.size() / 256) {
+                // CraftBukkit start - use per-world spawn limits
+                int limit = enumcreaturetype.b();
+                switch (enumcreaturetype) {
+                    case MONSTER:
+                        limit = worldserver.getWorld().getMonsterSpawnLimit();
+                        break;
+                    case CREATURE:
+                        limit = worldserver.getWorld().getAnimalSpawnLimit();
+                        break;
+                    case WATER_CREATURE:
+                        limit = worldserver.getWorld().getWaterAnimalSpawnLimit();
+                        break;
+                    case AMBIENT:
+                        limit = worldserver.getWorld().getAmbientSpawnLimit();
+                        break;
+                }
+
+                if (limit == 0) {
+                    return 0;
+                }
+                // CraftBukkit end
+
+                if ((!enumcreaturetype.d() || flag1) && (enumcreaturetype.d() || flag) && (!enumcreaturetype.e() || flag2) && worldserver.a(enumcreaturetype.a()) <= limit * b.size() / 256) { // CraftBukkit - use per-world limits
                     Iterator iterator = b.keySet().iterator();
 
                     label110:
                     while (iterator.hasNext()) {
-                        ChunkCoordIntPair chunkcoordintpair1 = (ChunkCoordIntPair) iterator.next();
+                        // CraftBukkit start
+                        long key = ((Long) iterator.next()).longValue();
 
-                        if (!((Boolean) b.get(chunkcoordintpair1)).booleanValue()) {
-                            ChunkPosition chunkposition = getRandomPosition(worldserver, chunkcoordintpair1.x, chunkcoordintpair1.z);
+                        if (!b.get(key)) {
+                            ChunkPosition chunkposition = getRandomPosition(worldserver, LongHash.msw(key), LongHash.lsw(key));
+                            // CraftBukkit end
                             int k1 = chunkposition.x;
                             int l1 = chunkposition.y;
                             int i2 = chunkposition.z;
@@ -121,7 +154,8 @@ public final class SpawnerCreature {
                                                             entityliving.setPositionRotation((double) f, (double) f1, (double) f2, worldserver.random.nextFloat() * 360.0F, 0.0F);
                                                             if (entityliving.canSpawn()) {
                                                                 ++j2;
-                                                                worldserver.addEntity(entityliving);
+                                                                // CraftBukkit - added a reason for spawning this creature
+                                                                worldserver.addEntity(entityliving, SpawnReason.NATURAL);
                                                                 a(entityliving, worldserver, f, f1, f2);
                                                                 if (j2 >= entityliving.bv()) {
                                                                     continue label110;
@@ -165,6 +199,7 @@ public final class SpawnerCreature {
     }
 
     private static void a(EntityLiving entityliving, World world, float f, float f1, float f2) {
+        if (entityliving.dead) return; // CraftBukkit
         entityliving.bG();
     }
 
@@ -201,7 +236,8 @@ public final class SpawnerCreature {
                             }
 
                             entityliving.setPositionRotation((double) f, (double) f1, (double) f2, random.nextFloat() * 360.0F, 0.0F);
-                            world.addEntity(entityliving);
+                            // CraftBukkit - added a reason for spawning this creature
+                            world.addEntity(entityliving, SpawnReason.CHUNK_GEN);
                             a(entityliving, world, f, f1, f2);
                             flag = true;
                         }

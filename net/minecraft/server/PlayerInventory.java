@@ -1,5 +1,12 @@
 package net.minecraft.server;
 
+// CraftBukkit start
+import java.util.List;
+
+import org.bukkit.craftbukkit.entity.CraftHumanEntity;
+import org.bukkit.entity.HumanEntity;
+// CraftBukkit end
+
 public class PlayerInventory implements IInventory {
 
     public ItemStack[] items = new ItemStack[36];
@@ -8,6 +15,39 @@ public class PlayerInventory implements IInventory {
     public EntityHuman player;
     private ItemStack g;
     public boolean e = false;
+
+    // CraftBukkit start
+    public List<HumanEntity> transaction = new java.util.ArrayList<HumanEntity>();
+    private int maxStack = MAX_STACK;
+
+    public ItemStack[] getContents() {
+        return this.items;
+    }
+
+    public ItemStack[] getArmorContents() {
+        return this.armor;
+    }
+
+    public void onOpen(CraftHumanEntity who) {
+        transaction.add(who);
+    }
+
+    public void onClose(CraftHumanEntity who) {
+        transaction.remove(who);
+    }
+
+    public List<HumanEntity> getViewers() {
+        return transaction;
+    }
+
+    public org.bukkit.inventory.InventoryHolder getOwner() {
+        return this.player.getBukkitEntity();
+    }
+
+    public void setMaxStackSize(int size) {
+        maxStack = size;
+    }
+    // CraftBukkit end
 
     public PlayerInventory(EntityHuman entityhuman) {
         this.player = entityhuman;
@@ -40,6 +80,22 @@ public class PlayerInventory implements IInventory {
 
         return -1;
     }
+
+    // CraftBukkit start - watch method above! :D
+    public int canHold(ItemStack itemstack) {
+        int remains = itemstack.count;
+        for (int i = 0; i < this.items.length; ++i) {
+            if (this.items[i] == null) return itemstack.count;
+
+            // Taken from firstPartial(ItemStack)
+            if (this.items[i] != null && this.items[i].id == itemstack.id && this.items[i].isStackable() && this.items[i].count < this.items[i].getMaxStackSize() && this.items[i].count < this.getMaxStackSize() && (!this.items[i].usesData() || this.items[i].getData() == itemstack.getData())) {
+                remains -= (this.items[i].getMaxStackSize() < this.getMaxStackSize() ? this.items[i].getMaxStackSize() : this.getMaxStackSize()) - this.items[i].count;
+            }
+            if (remains <= 0) return itemstack.count;
+        }
+        return itemstack.count - remains;
+    }
+    // CraftBukkit end
 
     public int i() {
         for (int i = 0; i < this.items.length; ++i) {
@@ -322,7 +378,7 @@ public class PlayerInventory implements IInventory {
     }
 
     public int getMaxStackSize() {
-        return 64;
+        return maxStack;
     }
 
     public int a(Entity entity) {
@@ -402,6 +458,11 @@ public class PlayerInventory implements IInventory {
     }
 
     public ItemStack getCarried() {
+        // CraftBukkit start
+        if (this.g != null && this.g.count == 0) {
+            this.setCarried(null);
+        }
+        // CraftBukkit end
         return this.g;
     }
 
@@ -441,5 +502,7 @@ public class PlayerInventory implements IInventory {
         for (i = 0; i < this.armor.length; ++i) {
             this.armor[i] = ItemStack.b(playerinventory.armor[i]);
         }
+
+        this.itemInHandIndex = playerinventory.itemInHandIndex;
     }
 }

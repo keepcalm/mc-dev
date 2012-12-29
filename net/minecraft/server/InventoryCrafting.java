@@ -1,10 +1,60 @@
 package net.minecraft.server;
 
+// CraftBukkit start
+import java.util.List;
+
+import org.bukkit.craftbukkit.entity.CraftHumanEntity;
+import org.bukkit.entity.HumanEntity;
+import org.bukkit.event.inventory.InventoryType;
+// CraftBukkit end
+
 public class InventoryCrafting implements IInventory {
 
     private ItemStack[] items;
     private int b;
     private Container c;
+
+    // CraftBukkit start
+    public List<HumanEntity> transaction = new java.util.ArrayList<HumanEntity>();
+    public IRecipe currentRecipe;
+    public IInventory resultInventory;
+    private EntityHuman owner;
+    private int maxStack = MAX_STACK;
+
+    public ItemStack[] getContents() {
+        return this.items;
+    }
+
+    public void onOpen(CraftHumanEntity who) {
+        transaction.add(who);
+    }
+
+    public InventoryType getInvType() {
+        return items.length == 4 ? InventoryType.CRAFTING : InventoryType.WORKBENCH;
+    }
+
+    public void onClose(CraftHumanEntity who) {
+        transaction.remove(who);
+    }
+
+    public List<HumanEntity> getViewers() {
+        return transaction;
+    }
+
+    public org.bukkit.inventory.InventoryHolder getOwner() {
+        return owner.getBukkitEntity();
+    }
+
+    public void setMaxStackSize(int size) {
+        maxStack = size;
+        resultInventory.setMaxStackSize(size);
+    }
+
+    public InventoryCrafting(Container container, int i, int j, EntityHuman player) {
+        this(container, i, j);
+        this.owner = player;
+    }
+    // CraftBukkit end
 
     public InventoryCrafting(Container container, int i, int j) {
         int k = i * j;
@@ -76,7 +126,7 @@ public class InventoryCrafting implements IInventory {
     }
 
     public int getMaxStackSize() {
-        return 64;
+        return maxStack; // CraftBukkit
     }
 
     public void update() {}

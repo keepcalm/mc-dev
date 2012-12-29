@@ -1,6 +1,7 @@
 package net.minecraft.server;
 
 public abstract class EntityAgeable extends EntityCreature {
+    public boolean ageLocked = false; // CraftBukkit
 
     public EntityAgeable(World world) {
         super(world);
@@ -20,7 +21,13 @@ public abstract class EntityAgeable extends EntityCreature {
                 if (entityageable != null) {
                     entityageable.setAge(-24000);
                     entityageable.setPositionRotation(this.locX, this.locY, this.locZ, 0.0F, 0.0F);
-                    this.world.addEntity(entityageable);
+                    this.world.addEntity(entityageable, org.bukkit.event.entity.CreatureSpawnEvent.SpawnReason.SPAWNER_EGG); // CraftBukkit
+                    if (!entityhuman.abilities.canInstantlyBuild) {
+                        --itemstack.count;
+                        if (itemstack.count == 0) { // CraftBukkit - allow less than 0 stacks as "infinit"
+                            entityhuman.inventory.setItem(entityhuman.inventory.itemInHandIndex, (ItemStack) null);
+                        }
+                    }
                 }
             }
         }
@@ -44,17 +51,20 @@ public abstract class EntityAgeable extends EntityCreature {
     public void b(NBTTagCompound nbttagcompound) {
         super.b(nbttagcompound);
         nbttagcompound.setInt("Age", this.getAge());
+        nbttagcompound.setBoolean("AgeLocked", this.ageLocked); // CraftBukkit
     }
 
     public void a(NBTTagCompound nbttagcompound) {
         super.a(nbttagcompound);
         this.setAge(nbttagcompound.getInt("Age"));
+        this.ageLocked = nbttagcompound.getBoolean("AgeLocked"); // CraftBukkit
     }
 
     public void c() {
         super.c();
         int i = this.getAge();
 
+        if (ageLocked) return; // CraftBukkit
         if (i < 0) {
             ++i;
             this.setAge(i);

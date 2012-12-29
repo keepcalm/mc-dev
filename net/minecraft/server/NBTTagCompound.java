@@ -29,7 +29,13 @@ public class NBTTagCompound extends NBTBase {
             NBTBase.a(nbtbase, dataoutput);
         }
 
-        dataoutput.writeByte(0);
+        // CraftBukkit start
+        try {
+            dataoutput.writeByte(0);
+        } catch (java.io.IOException ex) {
+            ex.printStackTrace();
+        }
+        // CraftBukkit end
     }
 
     void load(DataInput datainput) {

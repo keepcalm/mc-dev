@@ -1,12 +1,14 @@
 package net.minecraft.server;
 
+import org.bukkit.event.entity.EntityTargetEvent; // CraftBukkit
+
 public class EntitySpider extends EntityMonster {
 
     public EntitySpider(World world) {
         super(world);
         this.texture = "/mob/spider.png";
         this.a(1.4F, 0.9F);
-        this.bG = 0.8F;
+        this.bH = 0.8F;
     }
 
     protected void a() {
@@ -61,7 +63,19 @@ public class EntitySpider extends EntityMonster {
         float f1 = this.c(1.0F);
 
         if (f1 > 0.5F && this.random.nextInt(100) == 0) {
-            this.target = null;
+            // CraftBukkit start
+            EntityTargetEvent event = new EntityTargetEvent(this.getBukkitEntity(), null, EntityTargetEvent.TargetReason.FORGOT_TARGET);
+            this.world.getServer().getPluginManager().callEvent(event);
+
+            if (!event.isCancelled()) {
+                if (event.getTarget() == null) {
+                    this.target = null;
+                } else {
+                    this.target = ((org.bukkit.craftbukkit.entity.CraftEntity) event.getTarget()).getHandle();
+                }
+                return;
+            }
+            // CraftBukkit end
         } else {
             if (f > 2.0F && f < 6.0F && this.random.nextInt(10) == 0) {
                 if (this.onGround) {
@@ -84,10 +98,25 @@ public class EntitySpider extends EntityMonster {
     }
 
     protected void dropDeathLoot(boolean flag, int i) {
-        super.dropDeathLoot(flag, i);
-        if (flag && (this.random.nextInt(3) == 0 || this.random.nextInt(1 + i) > 0)) {
-            this.b(Item.SPIDER_EYE.id, 1);
+        // CraftBukkit start - whole method; adapted from super.dropDeathLoot.
+        java.util.List<org.bukkit.inventory.ItemStack> loot = new java.util.ArrayList<org.bukkit.inventory.ItemStack>();
+
+        int k = this.random.nextInt(3);
+
+        if (i > 0) {
+            k += this.random.nextInt(i + 1);
         }
+
+        if (k > 0) {
+            loot.add(new org.bukkit.inventory.ItemStack(Item.STRING.id, k));
+        }
+
+        if (flag && (this.random.nextInt(3) == 0 || this.random.nextInt(1 + i) > 0)) {
+            loot.add(new org.bukkit.inventory.ItemStack(Item.SPIDER_EYE.id, 1));
+        }
+
+        org.bukkit.craftbukkit.event.CraftEventFactory.callEntityDeathEvent(this, loot); // raise event even for those times when the entity does not drop loot
+        // CraftBukkit end
     }
 
     public boolean g_() {

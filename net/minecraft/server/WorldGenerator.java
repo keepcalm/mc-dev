@@ -2,6 +2,8 @@ package net.minecraft.server;
 
 import java.util.Random;
 
+import org.bukkit.BlockChangeDelegate; // CraftBukkit
+
 public abstract class WorldGenerator {
 
     private final boolean a;
@@ -19,11 +21,13 @@ public abstract class WorldGenerator {
 
     public void a(double d0, double d1, double d2) {}
 
-    protected void setType(World world, int i, int j, int k, int l) {
+    // CraftBukkit - change signature
+    protected void setType(BlockChangeDelegate world, int i, int j, int k, int l) {
         this.setTypeAndData(world, i, j, k, l, 0);
     }
 
-    protected void setTypeAndData(World world, int i, int j, int k, int l, int i1) {
+    // CraftBukkit - change signature
+    protected void setTypeAndData(BlockChangeDelegate world, int i, int j, int k, int l, int i1) {
         if (this.a) {
             world.setTypeIdAndData(i, j, k, l, i1);
         } else {

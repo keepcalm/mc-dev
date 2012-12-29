@@ -4,6 +4,8 @@ import java.io.DataInputStream;
 import java.io.DataOutputStream;
 import java.util.List;
 
+import java.io.IOException; // CraftBukkit
+
 public class Packet20NamedEntitySpawn extends Packet {
 
     public int a;
@@ -21,7 +23,15 @@ public class Packet20NamedEntitySpawn extends Packet {
 
     public Packet20NamedEntitySpawn(EntityHuman entityhuman) {
         this.a = entityhuman.id;
-        this.b = entityhuman.name;
+
+        // CraftBukkit start - limit name length to 16 characters
+        if (entityhuman.name.length() > 16) {
+            this.b = entityhuman.name.substring(0, 16);
+        } else {
+            this.b = entityhuman.name;
+        }
+        // CraftBukkit end
+
         this.c = MathHelper.floor(entityhuman.locX * 32.0D);
         this.d = MathHelper.floor(entityhuman.locY * 32.0D);
         this.e = MathHelper.floor(entityhuman.locZ * 32.0D);
@@ -33,7 +43,7 @@ public class Packet20NamedEntitySpawn extends Packet {
         this.i = entityhuman.getDataWatcher();
     }
 
-    public void a(DataInputStream datainputstream) {
+    public void a(DataInputStream datainputstream) throws IOException { // CraftBukkit
         this.a = datainputstream.readInt();
         this.b = a(datainputstream, 16);
         this.c = datainputstream.readInt();
@@ -45,7 +55,7 @@ public class Packet20NamedEntitySpawn extends Packet {
         this.j = DataWatcher.a(datainputstream);
     }
 
-    public void a(DataOutputStream dataoutputstream) {
+    public void a(DataOutputStream dataoutputstream) throws IOException { // CraftBukkit
         dataoutputstream.writeInt(this.a);
         a(this.b, dataoutputstream);
         dataoutputstream.writeInt(this.c);
@@ -57,8 +67,8 @@ public class Packet20NamedEntitySpawn extends Packet {
         this.i.a(dataoutputstream);
     }
 
-    public void handle(NetHandler nethandler) {
-        nethandler.a(this);
+    public void handle(Connection connection) {
+        connection.a(this);
     }
 
     public int a() {

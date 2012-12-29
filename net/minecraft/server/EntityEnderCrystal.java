@@ -50,11 +50,17 @@ public class EntityEnderCrystal extends Entity {
             return false;
         } else {
             if (!this.dead && !this.world.isStatic) {
+                // CraftBukkit start - All non-living entities need this
+                if (org.bukkit.craftbukkit.event.CraftEventFactory.handleNonLivingEntityDamageEvent(this, damagesource, i)) {
+                    return false;
+                }
+                // CraftBukkit end
+
                 this.b = 0;
                 if (this.b <= 0) {
                     this.die();
                     if (!this.world.isStatic) {
-                        this.world.explode((Entity) null, this.locX, this.locY, this.locZ, 6.0F, true);
+                        this.world.explode(this, this.locX, this.locY, this.locZ, 6.0F, true); // CraftBukkit - (Entity) null -> this
                     }
                 }
             }

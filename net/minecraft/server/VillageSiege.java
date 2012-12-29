@@ -147,7 +147,7 @@ public class VillageSiege {
             }
 
             entityzombie.setPositionRotation(vec3d.c, vec3d.d, vec3d.e, this.world.random.nextFloat() * 360.0F, 0.0F);
-            this.world.addEntity(entityzombie);
+            this.world.addEntity(entityzombie, org.bukkit.event.entity.CreatureSpawnEvent.SpawnReason.VILLAGE_INVASION); // CraftBukkit
             ChunkCoordinates chunkcoordinates = this.f.getCenter();
 
             entityzombie.b(chunkcoordinates.x, chunkcoordinates.y, chunkcoordinates.z, this.f.getSize());
@@ -162,7 +162,7 @@ public class VillageSiege {
             int k1 = k + this.world.random.nextInt(16) - 8;
 
             if (this.f.a(i1, j1, k1) && SpawnerCreature.a(EnumCreatureType.MONSTER, this.world, i1, j1, k1)) {
-                this.world.getVec3DPool().create((double) i1, (double) j1, (double) k1);
+                return this.world.getVec3DPool().create((double) i1, (double) j1, (double) k1);
             }
         }
 

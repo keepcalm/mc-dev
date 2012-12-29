@@ -11,13 +11,31 @@ public class ChunkSection {
     private NibbleArray blockLight;
     private NibbleArray skyLight;
 
-    public ChunkSection(int i) {
+    public ChunkSection(int i, boolean flag) {
         this.yPos = i;
         this.blockIds = new byte[4096];
         this.blockData = new NibbleArray(this.blockIds.length, 4);
-        this.skyLight = new NibbleArray(this.blockIds.length, 4);
         this.blockLight = new NibbleArray(this.blockIds.length, 4);
+        if (flag) {
+            this.skyLight = new NibbleArray(this.blockIds.length, 4);
+        }
     }
+
+    // CraftBukkit start
+    public ChunkSection(int y, boolean flag, byte[] blkIds, byte[] extBlkIds) {
+        this.yPos = y;
+        this.blockIds = blkIds;
+        if (extBlkIds != null) {
+            this.extBlockIds = new NibbleArray(extBlkIds, 4);
+        }
+        this.blockData = new NibbleArray(this.blockIds.length, 4);
+        this.blockLight = new NibbleArray(this.blockIds.length, 4);
+        if (flag) {
+            this.skyLight = new NibbleArray(this.blockIds.length, 4);
+        }
+        this.recalcBlockCounts();
+    }
+    // CraftBukkit end
 
     public int a(int i, int j, int k) {
         int l = this.blockIds[j << 8 | k << 4 | i] & 255;
@@ -97,6 +115,63 @@ public class ChunkSection {
     }
 
     public void recalcBlockCounts() {
+        // CraftBukkit start - optimize for speed
+        byte[] blkIds = this.blockIds;
+        int cntNonEmpty = 0;
+        int cntTicking = 0;
+        if (this.extBlockIds == null) { // No extended block IDs?  Don't waste time messing with them
+            for (int off = 0; off < blkIds.length; off++) {
+                int l = blkIds[off] & 0xFF;
+                if (l > 0) {
+                    if (Block.byId[l] == null) {
+                        blkIds[off] = 0;
+                    } else {
+                        ++cntNonEmpty;
+                        if (Block.byId[l].isTicking()) {
+                            ++cntTicking;
+                        }
+                    }
+                }
+            }
+        } else {
+            byte[] ext = this.extBlockIds.a;
+            for (int off = 0, off2 = 0; off < blkIds.length;) {
+                byte extid = ext[off2];
+                int l = (blkIds[off] & 0xFF) | ((extid & 0xF) << 8); // Even data
+                if (l > 0) {
+                    if (Block.byId[l] == null) {
+                        blkIds[off] = 0;
+                        ext[off2] &= 0xF0;
+                    } else {
+                        ++cntNonEmpty;
+                        if (Block.byId[l].isTicking()) {
+                            ++cntTicking;
+                        }
+                    }
+                }
+                off++;
+                l = (blkIds[off] & 0xFF) | ((extid & 0xF0) << 4); // Odd data
+                if (l > 0) {
+                    if (Block.byId[l] == null) {
+                        blkIds[off] = 0;
+                        ext[off2] &= 0x0F;
+                    } else {
+                        ++cntNonEmpty;
+                        if (Block.byId[l].isTicking()) {
+                            ++cntTicking;
+                        }
+                    }
+                }
+                off++;
+                off2++;
+            }
+        }
+        this.nonEmptyBlockCount = cntNonEmpty;
+        this.tickingBlockCount = cntTicking;
+    }
+
+    public void old_recalcBlockCounts() {
+        // CraftBukkit end
         this.nonEmptyBlockCount = 0;
         this.tickingBlockCount = 0;
 
@@ -148,6 +223,20 @@ public class ChunkSection {
     }
 
     public void a(NibbleArray nibblearray) {
+        // CraftBukkit start - don't hang on to an empty nibble array
+        boolean empty = true;
+        for (int i = 0; i < nibblearray.a.length; i++) {
+            if (nibblearray.a[i] != 0) {
+                empty = false;
+                break;
+            }
+        }
+
+        if (empty) {
+            return;
+        }
+        // CraftBukkit end
+
         this.extBlockIds = nibblearray;
     }
 

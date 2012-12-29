@@ -1,5 +1,7 @@
 package net.minecraft.server;
 
+import org.bukkit.craftbukkit.block.CraftBlockState; // CraftBukkit
+
 public class ItemDoor extends Item {
 
     private Material a;
@@ -30,7 +32,12 @@ public class ItemDoor extends Item {
                 } else {
                     int i1 = MathHelper.floor((double) ((entityhuman.yaw + 180.0F) * 4.0F / 360.0F) - 0.5D) & 3;
 
-                    place(world, i, j, k, i1, block);
+                    // CraftBukkit start
+                    if (!place(world, i, j, k, i1, block, entityhuman)) {
+                        return false;
+                    }
+                    // CraftBukkit end
+
                     --itemstack.count;
                     return true;
                 }
@@ -41,6 +48,12 @@ public class ItemDoor extends Item {
     }
 
     public static void place(World world, int i, int j, int k, int l, Block block) {
+        // CraftBukkit start
+        place(world, i, j, k, l, block, null);
+    }
+
+    public static boolean place(World world, int i, int j, int k, int l, Block block, EntityHuman entityhuman) {
+        // CraftBukkit end
         byte b0 = 0;
         byte b1 = 0;
 
@@ -72,11 +85,23 @@ public class ItemDoor extends Item {
             flag2 = true;
         }
 
+        CraftBlockState blockState = CraftBlockState.getBlockState(world, i, j, k); // CraftBukkit
         world.suppressPhysics = true;
         world.setTypeIdAndData(i, j, k, block.id, l);
+        // CraftBukkit start
+        if (entityhuman != null) {
+            org.bukkit.event.block.BlockPlaceEvent event = org.bukkit.craftbukkit.event.CraftEventFactory.callBlockPlaceEvent(world, entityhuman, blockState, i, j, k);
+
+            if (event.isCancelled() || !event.canBuild()) {
+                event.getBlockPlaced().setTypeIdAndData(blockState.getTypeId(), blockState.getRawData(), false);
+                return false;
+            }
+        }
+        // CraftBukkit end
         world.setTypeIdAndData(i, j + 1, k, block.id, 8 | (flag2 ? 1 : 0));
         world.suppressPhysics = false;
         world.applyPhysics(i, j, k, block.id);
         world.applyPhysics(i, j + 1, k, block.id);
+        return true; // CraftBukkit
     }
 }

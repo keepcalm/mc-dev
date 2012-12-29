@@ -2,6 +2,11 @@ package net.minecraft.server;
 
 import java.util.List;
 
+// CraftBukkit start
+import org.bukkit.event.entity.EntityRegainHealthEvent;
+import org.bukkit.event.entity.ExplosionPrimeEvent;
+// CraftBukkit end
+
 public class EntityWither extends EntityMonster implements IRangedEntity {
 
     private float[] d = new float[2];
@@ -11,7 +16,7 @@ public class EntityWither extends EntityMonster implements IRangedEntity {
     private int[] h = new int[2];
     private int[] i = new int[2];
     private int j;
-    private static final IEntitySelector bI = new EntitySelectorNotUndead();
+    private static final IEntitySelector bJ = new EntitySelectorNotUndead();
 
     public EntityWither(World world) {
         super(world);
@@ -19,16 +24,16 @@ public class EntityWither extends EntityMonster implements IRangedEntity {
         this.texture = "/mob/wither.png";
         this.a(0.9F, 4.0F);
         this.fireProof = true;
-        this.bG = 0.6F;
+        this.bH = 0.6F;
         this.getNavigation().e(true);
         this.goalSelector.a(0, new PathfinderGoalFloat(this));
-        this.goalSelector.a(2, new PathfinderGoalArrowAttack(this, this.bG, 40, 20.0F));
-        this.goalSelector.a(5, new PathfinderGoalRandomStroll(this, this.bG));
+        this.goalSelector.a(2, new PathfinderGoalArrowAttack(this, this.bH, 40, 20.0F));
+        this.goalSelector.a(5, new PathfinderGoalRandomStroll(this, this.bH));
         this.goalSelector.a(6, new PathfinderGoalLookAtPlayer(this, EntityHuman.class, 8.0F));
         this.goalSelector.a(7, new PathfinderGoalRandomLookaround(this));
         this.targetSelector.a(1, new PathfinderGoalHurtByTarget(this, false));
-        this.targetSelector.a(2, new PathfinderGoalNearestAttackableTarget(this, EntityLiving.class, 30.0F, 0, false, false, bI));
-        this.bc = 50;
+        this.targetSelector.a(2, new PathfinderGoalNearestAttackableTarget(this, EntityLiving.class, 30.0F, 0, false, false, bJ));
+        this.bd = 50;
     }
 
     protected void a() {
@@ -65,7 +70,7 @@ public class EntityWither extends EntityMonster implements IRangedEntity {
 
     public void c() {
         if (!this.world.isStatic) {
-            this.datawatcher.watch(16, Integer.valueOf(this.health));
+            this.datawatcher.watch(16, Integer.valueOf(this.getScaledHealth())); // CraftBukkit - this.health -> this.getScaledHealth()
         }
 
         this.motY *= 0.6000000238418579D;
@@ -134,7 +139,7 @@ public class EntityWither extends EntityMonster implements IRangedEntity {
                 this.d[i] = this.b(this.d[i], f1, 40.0F);
                 this.e[i] = this.b(this.e[i], f, 10.0F);
             } else {
-                this.e[i] = this.b(this.e[i], this.aw, 10.0F);
+                this.e[i] = this.b(this.e[i], this.ax, 10.0F);
             }
         }
 
@@ -164,13 +169,21 @@ public class EntityWither extends EntityMonster implements IRangedEntity {
         if (this.n() > 0) {
             i = this.n() - 1;
             if (i <= 0) {
-                this.world.createExplosion(this, this.locX, this.locY + (double) this.getHeadHeight(), this.locZ, 7.0F, false, this.world.getGameRules().getBoolean("mobGriefing"));
+                // CraftBukkit start
+                ExplosionPrimeEvent event = new ExplosionPrimeEvent(this.getBukkitEntity(), 7.0F, false);
+                this.world.getServer().getPluginManager().callEvent(event);
+
+                if (!event.isCancelled()) {
+                    this.world.createExplosion(this, this.locX, this.locY + (double) this.getHeadHeight(), this.locZ, event.getRadius(), event.getFire(), this.world.getGameRules().getBoolean("mobGriefing"));
+                }
+                // CraftBukkit end
+
                 this.world.e(1013, (int) this.locX, (int) this.locY, (int) this.locZ, 0);
             }
 
             this.t(i);
             if (this.ticksLived % 10 == 0) {
-                this.heal(10);
+                this.heal(10, EntityRegainHealthEvent.RegainReason.WITHER_SPAWN); // CraftBukkit
             }
         } else {
             super.bl();
@@ -209,7 +222,7 @@ public class EntityWither extends EntityMonster implements IRangedEntity {
                             this.c(i, 0);
                         }
                     } else {
-                        List list = this.world.a(EntityLiving.class, this.boundingBox.grow(20.0D, 8.0D, 20.0D), bI);
+                        List list = this.world.a(EntityLiving.class, this.boundingBox.grow(20.0D, 8.0D, 20.0D), bJ);
 
                         for (int i1 = 0; i1 < 10 && !list.isEmpty(); ++i1) {
                             EntityLiving entityliving = (EntityLiving) list.get(this.random.nextInt(list.size()));
@@ -256,6 +269,12 @@ public class EntityWither extends EntityMonster implements IRangedEntity {
                                 if (i3 > 0 && i3 != Block.BEDROCK.id && i3 != Block.ENDER_PORTAL.id && i3 != Block.ENDER_PORTAL_FRAME.id) {
                                     int j3 = this.world.getData(j2, k2, l2);
 
+                                    // CraftBukkit start
+                                    if (org.bukkit.craftbukkit.event.CraftEventFactory.callEntityChangeBlockEvent(this, j2, k2, l2, 0, 0).isCancelled()) {
+                                        continue;
+                                    }
+                                    // CraftBukkit end
+
                                     this.world.triggerEffect(2001, j2, k2, l2, i3 + (j3 << 12));
                                     Block.byId[i3].c(this.world, j2, k2, l2, j3, 0);
                                     this.world.setTypeId(j2, k2, l2, 0);
@@ -292,7 +311,7 @@ public class EntityWither extends EntityMonster implements IRangedEntity {
         if (i <= 0) {
             return this.locX;
         } else {
-            float f = (this.aw + (float) (180 * (i - 1))) / 180.0F * 3.1415927F;
+            float f = (this.ax + (float) (180 * (i - 1))) / 180.0F * 3.1415927F;
             float f1 = MathHelper.cos(f);
 
             return this.locX + (double) f1 * 1.3D;
@@ -307,7 +326,7 @@ public class EntityWither extends EntityMonster implements IRangedEntity {
         if (i <= 0) {
             return this.locZ;
         } else {
-            float f = (this.aw + (float) (180 * (i - 1))) / 180.0F * 3.1415927F;
+            float f = (this.ax + (float) (180 * (i - 1))) / 180.0F * 3.1415927F;
             float f1 = MathHelper.sin(f);
 
             return this.locZ + (double) f1 * 1.3D;
@@ -391,11 +410,15 @@ public class EntityWither extends EntityMonster implements IRangedEntity {
     }
 
     protected void dropDeathLoot(boolean flag, int i) {
-        this.b(Item.NETHER_STAR.id, 1);
+        // CraftBukkit start
+        java.util.List<org.bukkit.inventory.ItemStack> loot = new java.util.ArrayList<org.bukkit.inventory.ItemStack>();
+        loot.add(new org.bukkit.inventory.ItemStack(Item.NETHER_STAR.id, 1));
+        org.bukkit.craftbukkit.event.CraftEventFactory.callEntityDeathEvent(this, loot);
+        // CraftBukkit end
     }
 
     protected void bk() {
-        this.bA = 0;
+        this.bB = 0;
     }
 
     public boolean L() {
@@ -435,7 +458,7 @@ public class EntityWither extends EntityMonster implements IRangedEntity {
     }
 
     public boolean o() {
-        return this.b() <= this.getMaxHealth() / 2;
+        return this.b() <= this.maxHealth / 2; // CraftBukkit - this.getMaxHealth() -> this.maxHealth
     }
 
     public EnumMonsterType getMonsterType() {

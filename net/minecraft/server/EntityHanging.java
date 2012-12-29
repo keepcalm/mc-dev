@@ -3,6 +3,14 @@ package net.minecraft.server;
 import java.util.Iterator;
 import java.util.List;
 
+// CraftBukkit start
+import org.bukkit.entity.Hanging;
+import org.bukkit.entity.Painting;
+import org.bukkit.event.hanging.HangingBreakByEntityEvent;
+import org.bukkit.event.hanging.HangingBreakEvent;
+import org.bukkit.event.painting.PaintingBreakEvent;
+// CraftBukkit end
+
 public abstract class EntityHanging extends Entity {
 
     private int e;
@@ -97,6 +105,33 @@ public abstract class EntityHanging extends Entity {
         if (this.e++ == 100 && !this.world.isStatic) {
             this.e = 0;
             if (!this.dead && !this.survives()) {
+                // CraftBukkit start
+                Material material = this.world.getMaterial((int) this.locX, (int) this.locY, (int) this.locZ);
+                HangingBreakEvent.RemoveCause cause;
+
+                if (!material.equals(Material.AIR)) {
+                    // TODO: This feels insufficient to catch 100% of suffocation cases
+                    cause = HangingBreakEvent.RemoveCause.OBSTRUCTION;
+                } else {
+                    cause = HangingBreakEvent.RemoveCause.PHYSICS;
+                }
+
+                HangingBreakEvent event = new HangingBreakEvent((Hanging) this.getBukkitEntity(), cause);
+                this.world.getServer().getPluginManager().callEvent(event);
+
+                PaintingBreakEvent paintingEvent = null;
+                if (this instanceof EntityPainting) {
+                    // Fire old painting event until it can be removed
+                    paintingEvent = new PaintingBreakEvent((Painting) this.getBukkitEntity(), PaintingBreakEvent.RemoveCause.valueOf(cause.name()));
+                    paintingEvent.setCancelled(event.isCancelled());
+                    this.world.getServer().getPluginManager().callEvent(paintingEvent);
+                }
+
+                if (dead || event.isCancelled() || (paintingEvent != null && paintingEvent.isCancelled())) {
+                    return;
+                }
+                // CraftBukkit end
+
                 this.die();
                 this.h();
             }
@@ -177,6 +212,32 @@ public abstract class EntityHanging extends Entity {
             return false;
         } else {
             if (!this.dead && !this.world.isStatic) {
+                // CraftBukkit start
+                HangingBreakEvent event = new HangingBreakEvent((Hanging) this.getBukkitEntity(), HangingBreakEvent.RemoveCause.DEFAULT);
+                PaintingBreakEvent paintingEvent = null;
+                if (damagesource.getEntity() != null) {
+                    event = new HangingBreakByEntityEvent((Hanging) this.getBukkitEntity(), damagesource.getEntity() == null ? null : damagesource.getEntity().getBukkitEntity());
+
+                    if (this instanceof EntityPainting) {
+                        // Fire old painting event until it can be removed
+                        paintingEvent = new org.bukkit.event.painting.PaintingBreakByEntityEvent((Painting) this.getBukkitEntity(), damagesource.getEntity() == null ? null : damagesource.getEntity().getBukkitEntity());
+                    }
+                } else if (damagesource == DamageSource.EXPLOSION || damagesource == DamageSource.EXPLOSION2) {
+                    event = new HangingBreakEvent((Hanging) this.getBukkitEntity(), HangingBreakEvent.RemoveCause.EXPLOSION);
+                }
+
+                this.world.getServer().getPluginManager().callEvent(event);
+
+                if (paintingEvent != null) {
+                    paintingEvent.setCancelled(event.isCancelled());
+                    this.world.getServer().getPluginManager().callEvent(paintingEvent);
+                }
+
+                if (dead || event.isCancelled() || (paintingEvent != null && paintingEvent.isCancelled())) {
+                    return true;
+                }
+                // CraftBukkit end
+
                 this.die();
                 this.K();
                 EntityHuman entityhuman = null;
@@ -198,13 +259,15 @@ public abstract class EntityHanging extends Entity {
 
     public void move(double d0, double d1, double d2) {
         if (!this.world.isStatic && !this.dead && d0 * d0 + d1 * d1 + d2 * d2 > 0.0D) {
+            if (dead) return; // CraftBukkit
+
             this.die();
             this.h();
         }
     }
 
     public void g(double d0, double d1, double d2) {
-        if (!this.world.isStatic && !this.dead && d0 * d0 + d1 * d1 + d2 * d2 > 0.0D) {
+        if (false && !this.world.isStatic && !this.dead && d0 * d0 + d1 * d1 + d2 * d2 > 0.0D) { // CraftBukkit - not needed
             this.die();
             this.h();
         }

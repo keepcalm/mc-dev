@@ -13,7 +13,7 @@ public class ItemBow extends Item {
         boolean flag = entityhuman.abilities.canInstantlyBuild || EnchantmentManager.getEnchantmentLevel(Enchantment.ARROW_INFINITE.id, itemstack) > 0;
 
         if (flag || entityhuman.inventory.e(Item.ARROW.id)) {
-            int j = this.a(itemstack) - i;
+            int j = this.c_(itemstack) - i;
             float f = (float) j / 20.0F;
 
             f = (f * f + f * 2.0F) / 3.0F;
@@ -47,6 +47,18 @@ public class ItemBow extends Item {
                 entityarrow.setOnFire(100);
             }
 
+            // CraftBukkit start
+            org.bukkit.event.entity.EntityShootBowEvent event = org.bukkit.craftbukkit.event.CraftEventFactory.callEntityShootBowEvent(entityhuman, itemstack, entityarrow, f);
+            if (event.isCancelled()) {
+                event.getProjectile().remove();
+                return;
+            }
+
+            if (event.getProjectile() == entityarrow.getBukkitEntity()) {
+                world.addEntity(entityarrow);
+            }
+            // CraftBukkit end
+
             itemstack.damage(1, entityhuman);
             world.makeSound(entityhuman, "random.bow", 1.0F, 1.0F / (d.nextFloat() * 0.4F + 1.2F) + f * 0.5F);
             if (flag) {
@@ -54,10 +66,7 @@ public class ItemBow extends Item {
             } else {
                 entityhuman.inventory.d(Item.ARROW.id);
             }
-
-            if (!world.isStatic) {
-                world.addEntity(entityarrow);
-            }
+            // CraftBukkit - moved addEntity up
         }
     }
 
@@ -65,17 +74,17 @@ public class ItemBow extends Item {
         return itemstack;
     }
 
-    public int a(ItemStack itemstack) {
+    public int c_(ItemStack itemstack) {
         return 72000;
     }
 
-    public EnumAnimation d_(ItemStack itemstack) {
+    public EnumAnimation b_(ItemStack itemstack) {
         return EnumAnimation.e;
     }
 
     public ItemStack a(ItemStack itemstack, World world, EntityHuman entityhuman) {
         if (entityhuman.abilities.canInstantlyBuild || entityhuman.inventory.e(Item.ARROW.id)) {
-            entityhuman.a(itemstack, this.a(itemstack));
+            entityhuman.a(itemstack, this.c_(itemstack));
         }
 
         return itemstack;

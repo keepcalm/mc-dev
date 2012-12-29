@@ -5,10 +5,12 @@ import java.util.HashSet;
 import java.util.Random;
 import java.util.Set;
 
+import org.bukkit.event.block.BlockRedstoneEvent; // CraftBukkit
+
 public class BlockRedstoneWire extends Block {
 
     private boolean a = true;
-    private Set b = new HashSet();
+    private Set b = new java.util.LinkedHashSet(); // CraftBukkit - HashSet -> LinkedHashSet
 
     public BlockRedstoneWire(int i, int j) {
         super(i, j, Material.ORIENTABLE);
@@ -106,6 +108,15 @@ public class BlockRedstoneWire extends Block {
             }
         }
 
+        // CraftBukkit start
+        if (k1 != l1) {
+            BlockRedstoneEvent event = new BlockRedstoneEvent(world.getWorld().getBlockAt(i, j, k), k1, l1);
+            world.getServer().getPluginManager().callEvent(event);
+
+            l1 = event.getNewCurrent();
+        }
+        // CraftBukkit end
+
         if (k1 != l1) {
             world.suppressPhysics = true;
             world.setData(i, j, k, l1);
@@ -185,6 +196,7 @@ public class BlockRedstoneWire extends Block {
     }
 
     public void onPlace(World world, int i, int j, int k) {
+        if (world.suppressPhysics) return; // CraftBukkit
         super.onPlace(world, i, j, k);
         if (!world.isStatic) {
             this.l(world, i, j, k);
@@ -260,7 +272,8 @@ public class BlockRedstoneWire extends Block {
         }
     }
 
-    private int getPower(World world, int i, int j, int k, int l) {
+    // CraftBukkit - private -> public
+    public int getPower(World world, int i, int j, int k, int l) {
         if (world.getTypeId(i, j, k) != this.id) {
             return l;
         } else {

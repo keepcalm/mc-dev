@@ -2,6 +2,8 @@ package net.minecraft.server;
 
 import java.util.Calendar;
 
+import org.bukkit.event.entity.EntityCombustEvent; // CraftBukkit
+
 public class EntityZombie extends EntityMonster {
 
     private int d = 0;
@@ -9,15 +11,15 @@ public class EntityZombie extends EntityMonster {
     public EntityZombie(World world) {
         super(world);
         this.texture = "/mob/zombie.png";
-        this.bG = 0.23F;
+        this.bH = 0.23F;
         this.getNavigation().b(true);
         this.goalSelector.a(0, new PathfinderGoalFloat(this));
         this.goalSelector.a(1, new PathfinderGoalBreakDoor(this));
-        this.goalSelector.a(2, new PathfinderGoalMeleeAttack(this, EntityHuman.class, this.bG, false));
-        this.goalSelector.a(3, new PathfinderGoalMeleeAttack(this, EntityVillager.class, this.bG, true));
-        this.goalSelector.a(4, new PathfinderGoalMoveTowardsRestriction(this, this.bG));
-        this.goalSelector.a(5, new PathfinderGoalMoveThroughVillage(this, this.bG, false));
-        this.goalSelector.a(6, new PathfinderGoalRandomStroll(this, this.bG));
+        this.goalSelector.a(2, new PathfinderGoalMeleeAttack(this, EntityHuman.class, this.bH, false));
+        this.goalSelector.a(3, new PathfinderGoalMeleeAttack(this, EntityVillager.class, this.bH, true));
+        this.goalSelector.a(4, new PathfinderGoalMoveTowardsRestriction(this, this.bH));
+        this.goalSelector.a(5, new PathfinderGoalMoveThroughVillage(this, this.bH, false));
+        this.goalSelector.a(6, new PathfinderGoalRandomStroll(this, this.bH));
         this.goalSelector.a(7, new PathfinderGoalLookAtPlayer(this, EntityHuman.class, 8.0F));
         this.goalSelector.a(7, new PathfinderGoalRandomLookaround(this));
         this.targetSelector.a(1, new PathfinderGoalHurtByTarget(this, false));
@@ -59,7 +61,7 @@ public class EntityZombie extends EntityMonster {
     }
 
     public void setBaby(boolean flag) {
-        this.getDataWatcher().watch(12, Byte.valueOf((byte) 1));
+        this.getDataWatcher().watch(12, Byte.valueOf((byte) (flag ? 1 : 0))); // CraftBukkit - added flag
     }
 
     public boolean isVillager() {
@@ -91,7 +93,14 @@ public class EntityZombie extends EntityMonster {
                 }
 
                 if (flag) {
-                    this.setOnFire(8);
+                    // CraftBukkit start
+                    EntityCombustEvent event = new EntityCombustEvent(this.getBukkitEntity(), 8);
+                    this.world.getServer().getPluginManager().callEvent(event);
+
+                    if (!event.isCancelled()) {
+                        this.setOnFire(event.getDuration());
+                    }
+                    // CraftBukkit end
                 }
             }
         }
@@ -147,20 +156,20 @@ public class EntityZombie extends EntityMonster {
         return EnumMonsterType.UNDEAD;
     }
 
-    protected void l(int i) {
+    // CraftBukkit start - return rare dropped item instead of dropping it
+    protected ItemStack l(int i) {
         switch (this.random.nextInt(3)) {
         case 0:
-            this.b(Item.IRON_INGOT.id, 1);
-            break;
-
+            return new ItemStack(Item.IRON_INGOT.id, 1, 0);
         case 1:
-            this.b(Item.CARROT.id, 1);
-            break;
-
+            return new ItemStack(Item.CARROT.id, 1, 0);
         case 2:
-            this.b(Item.POTATO.id, 1);
+            return new ItemStack(Item.POTATO.id, 1, 0);
+        default:
+            return null;
         }
     }
+    // CraftBukkit end
 
     protected void bE() {
         super.bE();
@@ -226,7 +235,7 @@ public class EntityZombie extends EntityMonster {
     }
 
     public void bG() {
-        this.canPickUpLoot = this.random.nextFloat() < as[this.world.difficulty];
+        this.canPickUpLoot = this.random.nextFloat() < at[this.world.difficulty];
         if (this.world.random.nextFloat() < 0.05F) {
             this.setVillager(true);
         }
@@ -244,7 +253,7 @@ public class EntityZombie extends EntityMonster {
     }
 
     public boolean a(EntityHuman entityhuman) {
-        ItemStack itemstack = entityhuman.bT();
+        ItemStack itemstack = entityhuman.bS();
 
         if (itemstack != null && itemstack.getItem() == Item.GOLDEN_APPLE && itemstack.getData() == 0 && this.isVillager() && this.hasEffect(MobEffectList.WEAKNESS)) {
             if (!entityhuman.abilities.canInstantlyBuild) {

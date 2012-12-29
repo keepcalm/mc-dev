@@ -74,7 +74,7 @@ public class PathfinderGoalBreed extends PathfinderGoal {
             this.e.s();
             entityageable.setAge(-24000);
             entityageable.setPositionRotation(this.d.locX, this.d.locY, this.d.locZ, 0.0F, 0.0F);
-            this.a.addEntity(entityageable);
+            this.a.addEntity(entityageable, org.bukkit.event.entity.CreatureSpawnEvent.SpawnReason.BREEDING); // CraftBukkit - added SpawnReason
             Random random = this.d.aB();
 
             for (int i = 0; i < 7; ++i) {
@@ -85,7 +85,7 @@ public class PathfinderGoalBreed extends PathfinderGoal {
                 this.a.addParticle("heart", this.d.locX + (double) (random.nextFloat() * this.d.width * 2.0F) - (double) this.d.width, this.d.locY + 0.5D + (double) (random.nextFloat() * this.d.length), this.d.locZ + (double) (random.nextFloat() * this.d.width * 2.0F) - (double) this.d.width, d0, d1, d2);
             }
 
-            this.a.addEntity(new EntityExperienceOrb(this.a, this.d.locX, this.d.locY, this.d.locZ, random.nextInt(4) + 1));
+            this.a.addEntity(new EntityExperienceOrb(this.a, this.d.locX, this.d.locY, this.d.locZ, random.nextInt(7) + 1));
         }
     }
 }

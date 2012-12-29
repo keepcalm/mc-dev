@@ -1,6 +1,10 @@
 package net.minecraft.server;
 
+import org.bukkit.event.entity.ExplosionPrimeEvent; // CraftBukkit
+
 public class EntityLargeFireball extends EntityFireball {
+
+    public int e = 1;
 
     public EntityLargeFireball(World world) {
         super(world);
@@ -16,7 +20,16 @@ public class EntityLargeFireball extends EntityFireball {
                 movingobjectposition.entity.damageEntity(DamageSource.fireball(this, this.shooter), 6);
             }
 
-            this.world.createExplosion((Entity) null, this.locX, this.locY, this.locZ, 1.0F, true, this.world.getGameRules().getBoolean("mobGriefing"));
+            // CraftBukkit start
+            ExplosionPrimeEvent event = new ExplosionPrimeEvent((org.bukkit.entity.Explosive) org.bukkit.craftbukkit.entity.CraftEntity.getEntity(this.world.getServer(), this));
+            this.world.getServer().getPluginManager().callEvent(event);
+
+            if (!event.isCancelled()) {
+                // give 'this' instead of (Entity) null so we know what causes the damage
+                this.world.createExplosion(this, this.locX, this.locY, this.locZ, event.getRadius(), event.getFire(), this.world.getGameRules().getBoolean("mobGriefing"));
+            }
+            // CraftBukkit end
+
             this.die();
         }
     }

@@ -1,5 +1,10 @@
 package net.minecraft.server;
 
+// CraftBukkit start
+import org.bukkit.craftbukkit.inventory.CraftItemStack;
+import org.bukkit.event.block.BlockDispenseEvent;
+// CraftBukkit end
+
 public class DispenseBehaviorBoat extends DispenseBehaviorItem {
 
     private final DispenseBehaviorItem c;
@@ -33,10 +38,37 @@ public class DispenseBehaviorBoat extends DispenseBehaviorItem {
             d3 = 0.0D;
         }
 
-        EntityBoat entityboat = new EntityBoat(world, d0, d1 + d3, d2);
+        // CraftBukkit start
+        ItemStack itemstack1 = itemstack.a(1);
+        org.bukkit.block.Block block = world.getWorld().getBlockAt(isourceblock.getBlockX(), isourceblock.getBlockY(), isourceblock.getBlockZ());
+        CraftItemStack craftItem = CraftItemStack.asCraftMirror(itemstack1);
+
+        BlockDispenseEvent event = new BlockDispenseEvent(block, craftItem.clone(), new org.bukkit.util.Vector(d0, d1 + d3, d2));
+        if (!BlockDispenser.eventFired) {
+            world.getServer().getPluginManager().callEvent(event);
+        }
+
+        if (event.isCancelled()) {
+            itemstack.count++;
+            return itemstack;
+        }
+
+        if (!event.getItem().equals(craftItem)) {
+            itemstack.count++;
+            // Chain to handler for new item
+            ItemStack eventStack = CraftItemStack.asNMSCopy(event.getItem());
+            IDispenseBehavior idispensebehavior = (IDispenseBehavior) BlockDispenser.a.a(eventStack.getItem());
+            if (idispensebehavior != IDispenseBehavior.a && idispensebehavior != this) {
+                idispensebehavior.a(isourceblock, eventStack);
+                return itemstack;
+            }
+        }
+
+        EntityBoat entityboat = new EntityBoat(world, event.getVelocity().getX(), event.getVelocity().getY(), event.getVelocity().getZ());
+        // CraftBukkit end
 
         world.addEntity(entityboat);
-        itemstack.a(1);
+        // itemstack.a(1); // CraftBukkit - handled during event processing
         return itemstack;
     }
 

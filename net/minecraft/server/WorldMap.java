@@ -6,6 +6,14 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
+// CraftBukkit start
+import java.util.UUID;
+
+import org.bukkit.craftbukkit.CraftServer;
+import org.bukkit.craftbukkit.CraftWorld;
+import org.bukkit.craftbukkit.map.CraftMapView;
+// CraftBukkit end
+
 public class WorldMap extends WorldMapBase {
 
     public int centerX;
@@ -17,12 +25,45 @@ public class WorldMap extends WorldMapBase {
     private Map i = new HashMap();
     public Map g = new LinkedHashMap();
 
+    // CraftBukkit start
+    public final CraftMapView mapView;
+    private CraftServer server;
+    private UUID uniqueId = null;
+    // CraftBukkit end
+
     public WorldMap(String s) {
         super(s);
+        // CraftBukkit start
+        mapView = new CraftMapView(this);
+        server = (CraftServer) org.bukkit.Bukkit.getServer();
+        // CraftBukkit end
     }
 
     public void a(NBTTagCompound nbttagcompound) {
-        this.map = nbttagcompound.getByte("dimension");
+        // CraftBukkit start
+        byte dimension = nbttagcompound.getByte("dimension");
+
+        if (dimension >= 10) {
+            long least = nbttagcompound.getLong("UUIDLeast");
+            long most = nbttagcompound.getLong("UUIDMost");
+
+            if (least != 0L && most != 0L) {
+                this.uniqueId = new UUID(most, least);
+
+                CraftWorld world = (CraftWorld) server.getWorld(this.uniqueId);
+                // Check if the stored world details are correct.
+                if (world == null) {
+                    /* All Maps which do not have their valid world loaded are set to a dimension which hopefully won't be reached.
+                       This is to prevent them being corrupted with the wrong map data. */
+                    dimension = 127;
+                } else {
+                    dimension = (byte) world.getHandle().dimension;
+                }
+            }
+        }
+
+        this.map = dimension;
+        // CraftBukkit end
         this.centerX = nbttagcompound.getInt("xCenter");
         this.centerZ = nbttagcompound.getInt("zCenter");
         this.scale = nbttagcompound.getByte("scale");
@@ -63,6 +104,25 @@ public class WorldMap extends WorldMapBase {
     }
 
     public void b(NBTTagCompound nbttagcompound) {
+        // CraftBukkit start
+        if (this.map >= 10) {
+            if (this.uniqueId == null) {
+                for (org.bukkit.World world : server.getWorlds()) {
+                    CraftWorld cWorld = (CraftWorld) world;
+                    if (cWorld.getHandle().dimension == this.map) {
+                        this.uniqueId = cWorld.getUID();
+                        break;
+                    }
+                }
+            }
+            /* Perform a second check to see if a matching world was found, this is a necessary
+               change incase Maps are forcefully unlinked from a World and lack a UID.*/
+            if (this.uniqueId != null) {
+                nbttagcompound.setLong("UUIDLeast", this.uniqueId.getLeastSignificantBits());
+                nbttagcompound.setLong("UUIDMost", this.uniqueId.getMostSignificantBits());
+            }
+        }
+        // CraftBukkit end
         nbttagcompound.setByte("dimension", this.map);
         nbttagcompound.setInt("xCenter", this.centerX);
         nbttagcompound.setInt("zCenter", this.centerZ);

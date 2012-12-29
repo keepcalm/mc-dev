@@ -1,5 +1,10 @@
 package net.minecraft.server;
 
+// CraftBukkit start
+import org.bukkit.event.block.EntityBlockFormEvent;
+import org.bukkit.event.entity.EntityDamageEvent;
+// CraftBukkit end
+
 public class EntitySnowman extends EntityGolem implements IRangedEntity {
 
     public EntitySnowman(World world) {
@@ -25,14 +30,30 @@ public class EntitySnowman extends EntityGolem implements IRangedEntity {
     public void c() {
         super.c();
         if (this.G()) {
-            this.damageEntity(DamageSource.DROWN, 1);
+            // CraftBukkit start
+            EntityDamageEvent event = new EntityDamageEvent(this.getBukkitEntity(), EntityDamageEvent.DamageCause.DROWNING, 1);
+            this.world.getServer().getPluginManager().callEvent(event);
+
+            if (!event.isCancelled()) {
+                event.getEntity().setLastDamageCause(event);
+                this.damageEntity(DamageSource.DROWN, event.getDamage());
+            }
+            // CraftBukkit end
         }
 
         int i = MathHelper.floor(this.locX);
         int j = MathHelper.floor(this.locZ);
 
         if (this.world.getBiome(i, j).j() > 1.0F) {
-            this.damageEntity(DamageSource.BURN, 1);
+            // CraftBukkit start
+            EntityDamageEvent event = new EntityDamageEvent(this.getBukkitEntity(), EntityDamageEvent.DamageCause.MELTING, 1);
+            this.world.getServer().getPluginManager().callEvent(event);
+
+            if (!event.isCancelled()) {
+                event.getEntity().setLastDamageCause(event);
+                this.damageEntity(DamageSource.BURN, event.getDamage());
+            }
+            // CraftBukkit end
         }
 
         for (i = 0; i < 4; ++i) {
@@ -41,7 +62,17 @@ public class EntitySnowman extends EntityGolem implements IRangedEntity {
             int l = MathHelper.floor(this.locZ + (double) ((float) (i / 2 % 2 * 2 - 1) * 0.25F));
 
             if (this.world.getTypeId(j, k, l) == 0 && this.world.getBiome(j, l).j() < 0.8F && Block.SNOW.canPlace(this.world, j, k, l)) {
-                this.world.setTypeId(j, k, l, Block.SNOW.id);
+                // CraftBukkit start
+                org.bukkit.block.BlockState blockState = this.world.getWorld().getBlockAt(j, k, l).getState();
+                blockState.setTypeId(Block.SNOW.id);
+
+                EntityBlockFormEvent event = new EntityBlockFormEvent(this.getBukkitEntity(), blockState.getBlock(), blockState);
+                this.world.getServer().getPluginManager().callEvent(event);
+
+                if(!event.isCancelled()) {
+                    blockState.update(true);
+                }
+                // CraftBukkit end
             }
         }
     }
@@ -51,11 +82,16 @@ public class EntitySnowman extends EntityGolem implements IRangedEntity {
     }
 
     protected void dropDeathLoot(boolean flag, int i) {
+        // CraftBukkit start
+        java.util.List<org.bukkit.inventory.ItemStack> loot = new java.util.ArrayList<org.bukkit.inventory.ItemStack>();
         int j = this.random.nextInt(16);
 
-        for (int k = 0; k < j; ++k) {
-            this.b(Item.SNOW_BALL.id, 1);
+        if (j > 0) {
+            loot.add(new org.bukkit.inventory.ItemStack(Item.SNOW_BALL.id, j));
         }
+
+        org.bukkit.craftbukkit.event.CraftEventFactory.callEntityDeathEvent(this, loot);
+        // CraftBukkit end
     }
 
     public void d(EntityLiving entityliving) {

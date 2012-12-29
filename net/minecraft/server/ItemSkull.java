@@ -1,5 +1,7 @@
 package net.minecraft.server;
 
+import org.bukkit.craftbukkit.block.CraftBlockState; // CraftBukkit
+
 public class ItemSkull extends Item {
 
     private static final String[] a = new String[] { "skeleton", "wither", "zombie", "char", "creeper"};
@@ -18,6 +20,8 @@ public class ItemSkull extends Item {
         } else if (!world.getMaterial(i, j, k).isBuildable()) {
             return false;
         } else {
+            int clickedX = i, clickedY = j, clickedZ = k; // CraftBukkit
+
             if (l == 1) {
                 ++j;
             }
@@ -43,6 +47,8 @@ public class ItemSkull extends Item {
             } else if (!Block.SKULL.canPlace(world, i, j, k)) {
                 return false;
             } else {
+                CraftBlockState blockState = CraftBlockState.getBlockState(world, i, j, k); // CraftBukkit
+
                 world.setTypeIdAndData(i, j, k, Block.SKULL.id, l);
                 int i1 = 0;
 
@@ -64,6 +70,15 @@ public class ItemSkull extends Item {
                     ((BlockSkull) Block.SKULL).a(world, i, j, k, (TileEntitySkull) tileentity);
                 }
 
+                // CraftBukkit start
+                org.bukkit.event.block.BlockPlaceEvent event = org.bukkit.craftbukkit.event.CraftEventFactory.callBlockPlaceEvent(world, entityhuman, blockState, clickedX, clickedY, clickedZ);
+
+                if (event.isCancelled() || !event.canBuild()) {
+                    event.getBlockPlaced().setTypeIdAndData(blockState.getTypeId(), blockState.getRawData(), false);
+                    return false;
+                }
+                // CraftBukkit end
+
                 --itemstack.count;
                 return true;
             }
@@ -74,7 +89,7 @@ public class ItemSkull extends Item {
         return i;
     }
 
-    public String c_(ItemStack itemstack) {
+    public String d(ItemStack itemstack) {
         int i = itemstack.getData();
 
         if (i < 0 || i >= a.length) {
@@ -84,7 +99,7 @@ public class ItemSkull extends Item {
         return super.getName() + "." + a[i];
     }
 
-    public String j(ItemStack itemstack) {
-        return itemstack.getData() == 3 && itemstack.hasTag() && itemstack.getTag().hasKey("SkullOwner") ? LocaleI18n.get("item.skull.player.name", new Object[] { itemstack.getTag().getString("SkullOwner")}) : super.j(itemstack);
+    public String l(ItemStack itemstack) {
+        return itemstack.getData() == 3 && itemstack.hasTag() && itemstack.getTag().hasKey("SkullOwner") ? LocaleI18n.get("item.skull.player.name", new Object[] { itemstack.getTag().getString("SkullOwner")}) : super.l(itemstack);
     }
 }

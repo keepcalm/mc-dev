@@ -88,17 +88,22 @@ public class EntityChicken extends EntityAnimal {
     }
 
     protected void dropDeathLoot(boolean flag, int i) {
+        // CraftBukkit start - whole method
+        java.util.List<org.bukkit.inventory.ItemStack> loot = new java.util.ArrayList<org.bukkit.inventory.ItemStack>();
         int j = this.random.nextInt(3) + this.random.nextInt(1 + i);
 
-        for (int k = 0; k < j; ++k) {
-            this.b(Item.FEATHER.id, 1);
+        if (j > 0) {
+            loot.add(new org.bukkit.inventory.ItemStack(Item.FEATHER.id, j));
         }
 
         if (this.isBurning()) {
-            this.b(Item.COOKED_CHICKEN.id, 1);
+            loot.add(new org.bukkit.inventory.ItemStack(Item.COOKED_CHICKEN.id, 1));
         } else {
-            this.b(Item.RAW_CHICKEN.id, 1);
+            loot.add(new org.bukkit.inventory.ItemStack(Item.RAW_CHICKEN.id, 1));
         }
+
+        org.bukkit.craftbukkit.event.CraftEventFactory.callEntityDeathEvent(this, loot);
+        // CraftBukkit end
     }
 
     public EntityChicken b(EntityAgeable entityageable) {

@@ -1,12 +1,23 @@
 package net.minecraft.server;
 
-import java.util.Iterator;
 import java.util.List;
 import java.util.Random;
 
+// CraftBukkit start
+import java.util.Map;
+
+import org.bukkit.craftbukkit.inventory.CraftInventoryEnchanting;
+import org.bukkit.craftbukkit.inventory.CraftInventoryView;
+import org.bukkit.craftbukkit.inventory.CraftItemStack;
+import org.bukkit.event.enchantment.EnchantItemEvent;
+import org.bukkit.event.enchantment.PrepareItemEnchantEvent;
+import org.bukkit.entity.Player;
+// CraftBukkit end
+
 public class ContainerEnchantTable extends Container {
 
-    public IInventory enchantSlots = new ContainerEnchantTableInventory(this, "Enchant", 1);
+    // CraftBukkit - make type specific (changed from IInventory)
+    public ContainerEnchantTableInventory enchantSlots = new ContainerEnchantTableInventory(this, "Enchant", 1);
     private World world;
     private int x;
     private int y;
@@ -14,6 +25,10 @@ public class ContainerEnchantTable extends Container {
     private Random l = new Random();
     public long f;
     public int[] costs = new int[3];
+    // CraftBukkit start
+    private CraftInventoryView bukkitEntity = null;
+    private Player player;
+    // CraftBukkit end
 
     public ContainerEnchantTable(PlayerInventory playerinventory, World world, int i, int j, int k) {
         this.world = world;
@@ -33,6 +48,11 @@ public class ContainerEnchantTable extends Container {
         for (l = 0; l < 9; ++l) {
             this.a(new Slot(playerinventory, l, 8 + l * 18, 142));
         }
+
+        // CraftBukkit start
+        player = (Player) playerinventory.player.getBukkitEntity();
+        enchantSlots.player = player;
+        // CraftBukkit end
     }
 
     public void addSlotListener(ICrafting icrafting) {
@@ -102,6 +122,19 @@ public class ContainerEnchantTable extends Container {
                         this.costs[j] = EnchantmentManager.a(this.l, j, i, itemstack);
                     }
 
+                    // CraftBukkit start
+                    CraftItemStack item = CraftItemStack.asCraftMirror(itemstack);
+                    PrepareItemEnchantEvent event = new PrepareItemEnchantEvent(player, this.getBukkitView(), this.world.getWorld().getBlockAt(this.x, this.y, this.z), item, this.costs, i);
+                    this.world.getServer().getPluginManager().callEvent(event);
+
+                    if (event.isCancelled()) {
+                        for (i = 0; i < 3; ++i) {
+                            this.costs[i] = 0;
+                        }
+                        return;
+                    }
+                    // CraftBukkit end
+
                     this.b();
                 }
             } else {
@@ -118,16 +151,52 @@ public class ContainerEnchantTable extends Container {
         if (this.costs[i] > 0 && itemstack != null && (entityhuman.expLevel >= this.costs[i] || entityhuman.abilities.canInstantlyBuild)) {
             if (!this.world.isStatic) {
                 List list = EnchantmentManager.b(this.l, itemstack, this.costs[i]);
+                boolean flag = itemstack.id == Item.BOOK.id;
 
                 if (list != null) {
-                    entityhuman.levelDown(-this.costs[i]);
-                    Iterator iterator = list.iterator();
-
-                    while (iterator.hasNext()) {
-                        EnchantmentInstance enchantmentinstance = (EnchantmentInstance) iterator.next();
-
-                        itemstack.addEnchantment(enchantmentinstance.enchantment, enchantmentinstance.level);
+                    // CraftBukkit start
+                    Map<org.bukkit.enchantments.Enchantment, Integer> enchants = new java.util.HashMap<org.bukkit.enchantments.Enchantment, Integer>();
+                    for (Object obj : list) {
+                        EnchantmentInstance instance = (EnchantmentInstance) obj;
+                        enchants.put(org.bukkit.enchantments.Enchantment.getById(instance.enchantment.id), instance.level);
                     }
+                    CraftItemStack item = CraftItemStack.asCraftMirror(itemstack);
+
+                    EnchantItemEvent event = new EnchantItemEvent((Player) entityhuman.getBukkitEntity(), this.getBukkitView(), this.world.getWorld().getBlockAt(this.x, this.y, this.z), item, this.costs[i], enchants, i);
+                    this.world.getServer().getPluginManager().callEvent(event);
+
+                    int level = event.getExpLevelCost();
+                    if (event.isCancelled() || (level > entityhuman.expLevel && !entityhuman.abilities.canInstantlyBuild) || enchants.isEmpty()) {
+                        return false;
+                    }
+
+                    boolean applied = !flag;
+                    for (Map.Entry<org.bukkit.enchantments.Enchantment, Integer> entry : event.getEnchantsToAdd().entrySet()) {
+                        try {
+                            if (flag) {
+                                int enchantId = entry.getKey().getId();
+                                if (Enchantment.byId[enchantId] == null) {
+                                    continue;
+                                }
+
+                                EnchantmentInstance enchantment = new EnchantmentInstance(enchantId, entry.getValue());
+                                Item.ENCHANTED_BOOK.a(itemstack, enchantment);
+                                applied = true;
+                                itemstack.id = Item.ENCHANTED_BOOK.id;
+                                break;
+                            } else {
+                                item.addEnchantment(entry.getKey(), entry.getValue());
+                            }
+                        } catch (IllegalArgumentException e) {
+                            /* Just swallow invalid enchantments */
+                        }
+                    }
+
+                    // Only down level if we've applied the enchantments
+                    if (applied) {
+                        entityhuman.levelDown(-level);
+                    }
+                    // CraftBukkit end
 
                     this.a(this.enchantSlots);
                 }
@@ -151,6 +220,7 @@ public class ContainerEnchantTable extends Container {
     }
 
     public boolean a(EntityHuman entityhuman) {
+        if (!this.checkReachable) return true; // CraftBukkit
         return this.world.getTypeId(this.x, this.y, this.z) != Block.ENCHANTMENT_TABLE.id ? false : entityhuman.e((double) this.x + 0.5D, (double) this.y + 0.5D, (double) this.z + 0.5D) <= 64.0D;
     }
 
@@ -195,4 +265,16 @@ public class ContainerEnchantTable extends Container {
 
         return itemstack;
     }
+
+    // CraftBukkit start
+    public CraftInventoryView getBukkitView() {
+        if (bukkitEntity != null) {
+            return bukkitEntity;
+        }
+
+        CraftInventoryEnchanting inventory = new CraftInventoryEnchanting(this.enchantSlots);
+        bukkitEntity = new CraftInventoryView(this.player, inventory, this);
+        return bukkitEntity;
+    }
+    // CraftBukkit end
 }

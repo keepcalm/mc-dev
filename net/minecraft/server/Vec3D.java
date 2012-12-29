@@ -7,6 +7,7 @@ public class Vec3D {
     public double c;
     public double d;
     public double e;
+    public Vec3D next; // CraftBukkit
 
     public static Vec3D a(double d0, double d1, double d2) {
         return new Vec3D(a, d0, d1, d2);

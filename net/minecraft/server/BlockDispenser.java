@@ -5,6 +5,7 @@ import java.util.Random;
 public class BlockDispenser extends BlockContainer {
 
     public static final IRegistry a = new RegistryDefault(new DispenseBehaviorItem());
+    public static boolean eventFired = false; // CraftBukkit
     private Random b = new Random();
 
     protected BlockDispenser(int i) {
@@ -72,7 +73,8 @@ public class BlockDispenser extends BlockContainer {
         }
     }
 
-    private void dispense(World world, int i, int j, int k) {
+    // CraftBukkit - private -> public
+    public void dispense(World world, int i, int j, int k) {
         SourceBlock sourceblock = new SourceBlock(world, i, j, k);
         TileEntityDispenser tileentitydispenser = (TileEntityDispenser) sourceblock.getTileEntity();
 
@@ -87,6 +89,7 @@ public class BlockDispenser extends BlockContainer {
 
                 if (idispensebehavior != IDispenseBehavior.a) {
                     ItemStack itemstack1 = idispensebehavior.a(sourceblock, itemstack);
+                    eventFired = false; // CraftBukkit - reset event status
 
                     tileentitydispenser.setItem(l, itemstack1.count == 0 ? null : itemstack1);
                 }
@@ -157,7 +160,7 @@ public class BlockDispenser extends BlockContainer {
                         EntityItem entityitem = new EntityItem(world, (double) ((float) i + f), (double) ((float) j + f1), (double) ((float) k + f2), new ItemStack(itemstack.id, k1, itemstack.getData()));
 
                         if (itemstack.hasTag()) {
-                            entityitem.itemStack.setTag((NBTTagCompound) itemstack.getTag().clone());
+                            entityitem.getItemStack().setTag((NBTTagCompound) itemstack.getTag().clone());
                         }
 
                         float f3 = 0.05F;
@@ -176,9 +179,9 @@ public class BlockDispenser extends BlockContainer {
 
     public static IPosition a(ISourceBlock isourceblock) {
         EnumFacing enumfacing = EnumFacing.a(isourceblock.h());
-        double d0 = isourceblock.getX() + 0.6D * (double) enumfacing.c();
+        double d0 = isourceblock.getX() + 0.7D * (double) enumfacing.c();
         double d1 = isourceblock.getY();
-        double d2 = isourceblock.getZ() + 0.6D * (double) enumfacing.e();
+        double d2 = isourceblock.getZ() + 0.7D * (double) enumfacing.e();
 
         return new Position(d0, d1, d2);
     }

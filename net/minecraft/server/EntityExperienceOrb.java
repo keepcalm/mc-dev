@@ -1,12 +1,17 @@
 package net.minecraft.server;
 
+// CraftBukkit start
+import org.bukkit.craftbukkit.event.CraftEventFactory;
+import org.bukkit.event.entity.EntityTargetEvent;
+// CraftBukkit end
+
 public class EntityExperienceOrb extends Entity {
 
     public int a;
     public int b = 0;
     public int c;
     private int d = 5;
-    private int value;
+    public int value; // CraftBukkit - private -> public
     private EntityHuman targetPlayer;
     private int targetTime;
 
@@ -63,17 +68,23 @@ public class EntityExperienceOrb extends Entity {
         }
 
         if (this.targetPlayer != null) {
-            double d1 = (this.targetPlayer.locX - this.locX) / d0;
-            double d2 = (this.targetPlayer.locY + (double) this.targetPlayer.getHeadHeight() - this.locY) / d0;
-            double d3 = (this.targetPlayer.locZ - this.locZ) / d0;
-            double d4 = Math.sqrt(d1 * d1 + d2 * d2 + d3 * d3);
-            double d5 = 1.0D - d4;
+            // CraftBukkit start
+            EntityTargetEvent event = CraftEventFactory.callEntityTargetEvent(this, targetPlayer, EntityTargetEvent.TargetReason.CLOSEST_PLAYER);
+            Entity target = event.getTarget() == null ? null : ((org.bukkit.craftbukkit.entity.CraftEntity) event.getTarget()).getHandle();
 
-            if (d5 > 0.0D) {
-                d5 *= d5;
-                this.motX += d1 / d4 * d5 * 0.1D;
-                this.motY += d2 / d4 * d5 * 0.1D;
-                this.motZ += d3 / d4 * d5 * 0.1D;
+            if (!event.isCancelled() && target != null) {
+                double d1 = (target.locX - this.locX) / d0;
+                double d2 = (target.locY + (double) target.getHeadHeight() - this.locY) / d0;
+                double d3 = (target.locZ - this.locZ) / d0;
+                double d4 = Math.sqrt(d1 * d1 + d2 * d2 + d3 * d3);
+                double d5 = 1.0D - d4;
+                if (d5 > 0.0D) {
+                    d5 *= d5;
+                    this.motX += d1 / d4 * d5 * 0.1D;
+                    this.motY += d2 / d4 * d5 * 0.1D;
+                    this.motZ += d3 / d4 * d5 * 0.1D;
+                }
+                // CraftBukkit end
             }
         }
 
@@ -139,11 +150,11 @@ public class EntityExperienceOrb extends Entity {
 
     public void c_(EntityHuman entityhuman) {
         if (!this.world.isStatic) {
-            if (this.c == 0 && entityhuman.bR == 0) {
-                entityhuman.bR = 2;
+            if (this.c == 0 && entityhuman.bS == 0) {
+                entityhuman.bS = 2;
                 this.makeSound("random.orb", 0.1F, 0.5F * ((this.random.nextFloat() - this.random.nextFloat()) * 0.7F + 1.8F));
                 entityhuman.receive(this, 1);
-                entityhuman.giveExp(this.value);
+                entityhuman.giveExp(CraftEventFactory.callPlayerExpChangeEvent(entityhuman, this.value).getAmount()); // CraftBukkit - this.value to event.getAmount()
                 this.die();
             }
         }
@@ -154,6 +165,25 @@ public class EntityExperienceOrb extends Entity {
     }
 
     public static int getOrbValue(int i) {
+        // CraftBukkit start
+        if (i > 162670129) return i - 100000;
+        if (i > 81335063) return 81335063;
+        if (i > 40667527) return 40667527;
+        if (i > 20333759) return 20333759;
+        if (i > 10166857) return 10166857;
+        if (i > 5083423) return 5083423;
+        if (i > 2541701) return 2541701;
+        if (i > 1270849) return 1270849;
+        if (i > 635413) return 635413;
+        if (i > 317701) return 317701;
+        if (i > 158849) return 158849;
+        if (i > 79423) return 79423;
+        if (i > 39709) return 39709;
+        if (i > 19853) return 19853;
+        if (i > 9923) return 9923;
+        if (i > 4957) return 4957;
+        // CraftBukkit end
+
         return i >= 2477 ? 2477 : (i >= 1237 ? 1237 : (i >= 617 ? 617 : (i >= 307 ? 307 : (i >= 149 ? 149 : (i >= 73 ? 73 : (i >= 37 ? 37 : (i >= 17 ? 17 : (i >= 7 ? 7 : (i >= 3 ? 3 : 1)))))))));
     }
 
